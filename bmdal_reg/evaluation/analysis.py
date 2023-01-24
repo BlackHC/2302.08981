@@ -3,8 +3,8 @@ from typing import *
 from pathlib import Path
 import os
 
-from .. import custom_paths
-from .. import utils
+from bmdal_reg import custom_paths, utils
+
 
 class ExperimentResults:
     def __init__(self, results_dict: dict, exp_name: str):

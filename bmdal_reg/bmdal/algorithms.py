@@ -1,8 +1,4 @@
-import torch
-import torch.nn as nn
-
-from ..layers import *
-from .features import *
+from bmdal_reg.layers import *
 from .selection import *
 
 

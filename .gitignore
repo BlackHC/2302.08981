@@ -32,6 +32,6 @@ sched_opt_results
 catboost_info
 data_v2
 openml_cache
-examples/.ipynb_checkpoints
+bmdal_reg/examples/.ipynb_checkpoints
 
-custom_paths.py
+bmdal_reg/custom_paths.py

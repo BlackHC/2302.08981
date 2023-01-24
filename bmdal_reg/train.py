@@ -1,4 +1,4 @@
-from .bmdal.algorithms import BatchSelectorImpl, select_batch
+from bmdal_reg.bmdal.algorithms import select_batch
 from .models import *
 from .data import *
 from . import utils

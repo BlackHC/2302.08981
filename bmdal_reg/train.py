@@ -71,7 +71,8 @@ class ModelTrainer:
             for al_step, al_batch_size in enumerate(task_split.al_batch_sizes):
                 print(f'Performing AL step {al_step+1}/{len(task_split.al_batch_sizes)} with n_train={len(train_idxs)}'
                       f', n_pool={len(pool_idxs)}, al_batch_size={al_batch_size}', flush=True)
-                single_models = [model.get_single_model(i).to(al_device) for i in range(self.n_models)]
+                #single_models = [model.get_single_model(i).to(al_device) for i in range(self.n_models)]
+                single_models = model.to(al_device)
                 X = TensorFeatureData(data.tensors['X'].to(al_device))
                 feature_data = {'train': X[train_idxs],
                                 'pool': X[pool_idxs]}

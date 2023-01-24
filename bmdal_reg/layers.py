@@ -1,14 +1,7 @@
 import torch.distributions
 import numpy as np
 from bmdal_reg.bmdal.layer_features import *
-
-
-class SplittableModule(nn.Module):
-    """
-    Base class for vectorized (multiple NNs in parallel) training modules that can be split into non-vectorized modules
-    """
-    def get_single_model(self, i: int) -> nn.Module:
-        raise NotImplementedError()
+from bmdal_reg.splittable_module import SplittableModule
 
 
 def get_act_layer(act='relu', **config):
@@ -50,7 +43,7 @@ class ParallelLayerWrapper(SplittableModule):
     Wraps a module without parameters into a SplittableModule.
     """
     def __init__(self, module: nn.Module):
-        super().__init__()
+        super().__init__(1)
         self.module = module
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -66,8 +59,7 @@ class ParallelLinearLayer(SplittableModule):
     """
     def __init__(self, n_models, in_features, out_features, weight_gain=0.25, weight_init_mode='normal',
                  weight_init_gain=1.0, bias_gain=0.1, bias_init_gain=1.0, bias_init_mode='zero', **config):
-        super().__init__()
-        self.n_models = n_models
+        super().__init__(n_models)
         self.in_features = in_features
         self.out_features = out_features
 
@@ -105,7 +97,7 @@ class ParallelLinearLayer(SplittableModule):
 
 class LambdaLayer(SplittableModule):
     def __init__(self, f):
-        super().__init__()
+        super().__init__(1)
         self.f = f
 
     def get_single_model(self, i: int) -> nn.Module:
@@ -116,8 +108,8 @@ class LambdaLayer(SplittableModule):
 
 
 class ParallelSequential(SplittableModule):
-    def __init__(self, *layers):
-        super().__init__()
+    def __init__(self, n_models, *layers):
+        super().__init__(n_models)
         self.layers = nn.ModuleList(layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -125,5 +117,8 @@ class ParallelSequential(SplittableModule):
             x = l(x)
         return x
 
+    # TODO: replace with nn.Sequential instead of ParallelSequential
+    # Potential for triggering code change issues where the code repeatedly calls get_single_model.
+    # (But it shouldn't do that)
     def get_single_model(self, i: int) -> nn.Module:
-        return ParallelSequential(*[l.get_single_model(i) for l in self.layers])
+        return ParallelSequential(1, *[l.get_single_model(i) for l in self.layers])

@@ -1,6 +1,7 @@
 import torch.nn as nn
 
 from .feature_maps import *
+from ..splittable_module import SplittableModule
 
 
 class LayerGradientComputation:
@@ -64,32 +65,42 @@ class ModelPredictionsTransform(DataTransform):
         :param idxs: indexes of the feature data that should be passed through the model
         :return: feature data provided by the layers
         """
-        ys = []
-        with torch.inference_mode():
-            X = feature_data.get_tensor(idxs)
 
-            for model in self.models:
-                old_training = model.training
+        # Check whether the model is SplittableModule
+        if isinstance(self.models, SplittableModule):
+            with torch.inference_mode():
+                X = feature_data.get_tensor(idxs)
 
-                model.eval()
+                old_training = self.models.training
+                self.models.eval()
+                ys = self.models(X)  # implicitly calls hooks that were set by l.before_forward()
+                assert len(ys.shape) == 3 and ys.shape[2] == self.n_outputs
+                self.models.train(old_training)
+        else:
+            ys = []
+            with torch.inference_mode():
+                X = feature_data.get_tensor(idxs)
 
-                y = model(X)  # implicitly calls hooks that were set by l.before_forward()
-                assert len(y.shape) == 2 and y.shape[1] == self.n_outputs
+                for model in self.models:
+                    old_training = model.training
 
-                model.train(old_training)
+                    model.eval()
 
-                ys.append(y)
+                    y = model(X)  # implicitly calls hooks that were set by l.before_forward()
+                    assert len(y.shape) == 2 and y.shape[1] == self.n_outputs
 
+                    model.train(old_training)
+
+                    ys.append(y)
+            ys = torch.stack(ys, dim=0)
         # center the predictions across the models
-        ys = torch.stack(ys, dim=-1)
-        y_mean = ys.mean(dim=-1, keepdim=True)
+        y_mean = ys.mean(dim=0, keepdim=True)
         ys = (ys-y_mean) / len(self.models)
 
         # Split the predictions (n_points, n_outputs, n_models)
         # into n_outputs separate feature maps [(n_points, n_models)]
         assert self.n_outputs == 1
-        print(ys.shape)
-        data = TensorFeatureData(ys[:, 0])
+        data = TensorFeatureData(ys.squeeze(2).T)
         return data
 
 

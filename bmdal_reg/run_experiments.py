@@ -71,16 +71,24 @@ def get_bmdal_predictions_configs(**kwargs) -> RunConfigList:
 
     lst = RunConfigList()
 
+    mem_threshold = 2e-6
+
     # bait kernel comparison
     for fb_mode, overselection_factor in [('f', 1.0), ('fb', 2.0)]:
-        lst.append(2e-5, ModelTrainer(f'NN_bait-{fb_mode}-p_predictions-{n_models}_scale', selection_method='bait',
+        lst.append(mem_threshold, ModelTrainer(f'NN_bait-{fb_mode}-p_predictions-{n_models}_scale', selection_method='bait',
                                       overselection_factor=overselection_factor, base_kernel='predictions',
                                       sel_with_train=False,
                                       n_models=n_models, kernel_transforms=[('scale', [None])],
                                       **kwargs))
 
+        lst.append(mem_threshold, ModelTrainer(f'NN_bait-{fb_mode}-p_predictions-{n_models}', selection_method='bait',
+                                      overselection_factor=overselection_factor, base_kernel='predictions',
+                                      sel_with_train=False,
+                                      n_models=n_models, kernel_transforms=[],
+                                      **kwargs))
+
         if fb_mode == 'f':
-            lst.append(2e-5, ModelTrainer(f'NN_bait-{fb_mode}-p_predictions-{n_models}_scale', selection_method='bait',
+            lst.append(mem_threshold, ModelTrainer(f'NN_bait-{fb_mode}-p_predictions-{n_models}_scale', selection_method='bait',
                                           overselection_factor=overselection_factor,
                                           base_kernel='predictions',
                                           n_models=n_models,
@@ -88,61 +96,71 @@ def get_bmdal_predictions_configs(**kwargs) -> RunConfigList:
                                           kernel_transforms=[('scale', [None])],
                                           **kwargs))
 
+            lst.append(mem_threshold, ModelTrainer(f'NN_bait-{fb_mode}-p_predictions-{n_models}', selection_method='bait',
+                                          overselection_factor=overselection_factor,
+                                          base_kernel='predictions',
+                                          n_models=n_models,
+                                          sel_with_train=False,
+                                          kernel_transforms=[],
+                                          **kwargs))
+
     # maxdet kernel comparison
-    lst.append(2e-5, ModelTrainer(f'NN_maxdet-p_predictions-{n_models}_scale', selection_method='maxdet',
+    lst.append(mem_threshold, ModelTrainer(f'NN_maxdet-p_predictions-{n_models}_scale', selection_method='maxdet',
                                   base_kernel='predictions', n_models=n_models,
                                   sel_with_train=False,
                                   kernel_transforms=[('scale', [None])],
                                   **kwargs), 8e-9)
 
-    lst.append(2e-5, ModelTrainer(f'NN_maxdet-p_predictions-{n_models}', selection_method='maxdet',
+    lst.append(mem_threshold, ModelTrainer(f'NN_maxdet-p_predictions-{n_models}', selection_method='maxdet',
                                   base_kernel='predictions', n_models=n_models, sel_with_train=False,
+                                  kernel_transforms=[],
                                   **kwargs), 8e-9)
 
-    lst.append(8e-5, ModelTrainer(f'NN_maxdet-tp_predictions-{n_models}_scale', selection_method='maxdet',
+    lst.append(mem_threshold, ModelTrainer(f'NN_maxdet-tp_predictions-{n_models}_scale', selection_method='maxdet',
                                   base_kernel='predictions', sel_with_train=True,
                                   n_models=n_models, kernel_transforms=[('scale', [None])],
                                   **kwargs), 8e-9)
 
-    lst.append(8e-5, ModelTrainer(f'NN_maxdet-tp_predictions-{n_models}', selection_method='maxdet',
+    lst.append(mem_threshold, ModelTrainer(f'NN_maxdet-tp_predictions-{n_models}', selection_method='maxdet',
                                   base_kernel='predictions', sel_with_train=True,
+                                  kernel_transforms=[],
                                   n_models=n_models,
                                   **kwargs), 8e-9)
 
     # maxdist, kmeanspp, lcmd kernel comparisons
     for sel_name in ['maxdist', 'kmeanspp', 'lcmd']:
-        lst.append(2e-6, ModelTrainer(f'NN_{sel_name}-tp_predictions-{n_models}', selection_method=sel_name,
+        lst.append(mem_threshold, ModelTrainer(f'NN_{sel_name}-tp_predictions-{n_models}', selection_method=sel_name,
                                       base_kernel='predictions', kernel_transforms=[], sel_with_train=True,
                                       n_models=n_models, **kwargs))
-        lst.append(2e-6, ModelTrainer(f'NN_{sel_name}-tp_predictions-{n_models}_scale', selection_method=sel_name,
+        lst.append(mem_threshold, ModelTrainer(f'NN_{sel_name}-tp_predictions-{n_models}_scale', selection_method=sel_name,
                                       base_kernel='predictions', sel_with_train=True,
                                       n_models=n_models, kernel_transforms=[('scale', [None])],
                                       **kwargs))
-        lst.append(2e-6, ModelTrainer(f'NN_{sel_name}-p_predictions-{n_models}', selection_method=sel_name,
+        lst.append(mem_threshold, ModelTrainer(f'NN_{sel_name}-p_predictions-{n_models}', selection_method=sel_name,
                                       base_kernel='predictions', kernel_transforms=[], sel_with_train=False,
                                       n_models=n_models, **kwargs))
-        lst.append(2e-6, ModelTrainer(f'NN_{sel_name}-p_predictions-{n_models}_scale', selection_method=sel_name,
+        lst.append(mem_threshold, ModelTrainer(f'NN_{sel_name}-p_predictions-{n_models}_scale', selection_method=sel_name,
                                       base_kernel='predictions', sel_with_train=False,
                                       n_models=n_models, kernel_transforms=[('scale', [None])],
                                       **kwargs))
 
     # maxdiag kernel comparison
-    lst.append(8e-6, ModelTrainer(f'NN_maxdiag_predictions-{n_models}', selection_method='maxdiag',
+    lst.append(mem_threshold, ModelTrainer(f'NN_maxdiag_predictions-{n_models}', selection_method='maxdiag',
                                   base_kernel='predictions', kernel_transforms=[], sel_with_train=False,
                                   n_models=n_models,
                                   **kwargs))
-    lst.append(8e-6, ModelTrainer(f'NN_maxdiag_predictions-{n_models}_scale', selection_method='maxdiag',
+    lst.append(mem_threshold, ModelTrainer(f'NN_maxdiag_predictions-{n_models}_scale', selection_method='maxdiag',
                                   base_kernel='predictions', kernel_transforms=[('scale', [None])],
                                   sel_with_train=False,
                                   n_models=n_models,
                                   **kwargs))
 
     # Frank-Wolfe kernel comparison
-    lst.append(8e-6, ModelTrainer(f'NN_fw-p_predictions-{n_models}', selection_method='fw',
+    lst.append(mem_threshold, ModelTrainer(f'NN_fw-p_predictions-{n_models}', selection_method='fw',
                                   base_kernel='predictions', kernel_transforms=[], sel_with_train=False,
                                   n_models=n_models,
                                   **kwargs))
-    lst.append(8e-6, ModelTrainer(f'NN_fw-p_predictions-{n_models}_scale', selection_method='fw',
+    lst.append(mem_threshold, ModelTrainer(f'NN_fw-p_predictions-{n_models}_scale', selection_method='fw',
                                   base_kernel='predictions', kernel_transforms=[('scale', [None])],
                                   sel_with_train=False,
                                   n_models=n_models,

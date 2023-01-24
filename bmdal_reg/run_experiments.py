@@ -18,6 +18,14 @@ class RunConfigList:
         """
         self.configs = configs or []
 
+    def __add__(self, other):
+        """
+        Add two RunConfigLists.
+        :param other: Other RunConfigList to add.
+        :return: Returns a new RunConfigList that contains all configurations of self and other.
+        """
+        return RunConfigList(self.configs + other.configs)
+
     def append(self, ram_gb_per_sample: float, trainer: ModelTrainer, ram_gb_per_sample_bs: float = 0.0):
         """
         Append a configuration
@@ -49,6 +57,97 @@ class RunConfigList:
         for cfg in self.configs:
             yield cfg
 
+
+def get_bmdal_predictions_configs(**kwargs) -> RunConfigList:
+    """
+        :param kwargs: allows to set some hyperparameters, for example the learning rate, sigma_w, sigma_b, etc.
+        :return: Returns a list of configurations for BMDAL used in the paper.
+        """
+    sigma = kwargs.get('post_sigma', 0.1)
+    n_models = kwargs.get('n_models', 10)
+    compute_eff_dim = True
+    kwargs = utils.update_dict(dict(maxdet_sigma=sigma, bait_sigma=sigma, compute_eff_dim=compute_eff_dim,
+                                    allow_float64=True, lr=0.375, weight_gain=0.2, bias_gain=0.2), kwargs)
+
+    lst = RunConfigList()
+
+    # bait kernel comparison
+    for fb_mode, overselection_factor in [('f', 1.0), ('fb', 2.0)]:
+        lst.append(2e-5, ModelTrainer(f'NN_bait-{fb_mode}-p_predictions-{n_models}_scale', selection_method='bait',
+                                      overselection_factor=overselection_factor, base_kernel='predictions',
+                                      sel_with_train=False,
+                                      n_models=n_models, kernel_transforms=[('scale', [None])],
+                                      **kwargs))
+
+        if fb_mode == 'f':
+            lst.append(2e-5, ModelTrainer(f'NN_bait-{fb_mode}-p_predictions-{n_models}_scale', selection_method='bait',
+                                          overselection_factor=overselection_factor,
+                                          base_kernel='predictions',
+                                          n_models=n_models,
+                                          sel_with_train=False,
+                                          kernel_transforms=[('scale', [None])],
+                                          **kwargs))
+
+    # maxdet kernel comparison
+    lst.append(2e-5, ModelTrainer(f'NN_maxdet-p_predictions-{n_models}_scale', selection_method='maxdet',
+                                  base_kernel='predictions', n_models=n_models,
+                                  sel_with_train=False,
+                                  kernel_transforms=[('scale', [None])],
+                                  **kwargs), 8e-9)
+
+    lst.append(2e-5, ModelTrainer(f'NN_maxdet-p_predictions-{n_models}', selection_method='maxdet',
+                                  base_kernel='predictions', n_models=n_models, sel_with_train=False,
+                                  **kwargs), 8e-9)
+
+    lst.append(8e-5, ModelTrainer(f'NN_maxdet-tp_predictions-{n_models}_scale', selection_method='maxdet',
+                                  base_kernel='predictions', sel_with_train=True,
+                                  n_models=n_models, kernel_transforms=[('scale', [None])],
+                                  **kwargs), 8e-9)
+
+    lst.append(8e-5, ModelTrainer(f'NN_maxdet-tp_predictions-{n_models}', selection_method='maxdet',
+                                  base_kernel='predictions', sel_with_train=True,
+                                  n_models=n_models,
+                                  **kwargs), 8e-9)
+
+    # maxdist, kmeanspp, lcmd kernel comparisons
+    for sel_name in ['maxdist', 'kmeanspp', 'lcmd']:
+        lst.append(2e-6, ModelTrainer(f'NN_{sel_name}-tp_predictions-{n_models}', selection_method=sel_name,
+                                      base_kernel='predictions', kernel_transforms=[], sel_with_train=True,
+                                      n_models=n_models, **kwargs))
+        lst.append(2e-6, ModelTrainer(f'NN_{sel_name}-tp_predictions-{n_models}_scale', selection_method=sel_name,
+                                      base_kernel='predictions', sel_with_train=True,
+                                      n_models=n_models, kernel_transforms=[('scale', [None])],
+                                      **kwargs))
+        lst.append(2e-6, ModelTrainer(f'NN_{sel_name}-p_predictions-{n_models}', selection_method=sel_name,
+                                      base_kernel='predictions', kernel_transforms=[], sel_with_train=False,
+                                      n_models=n_models, **kwargs))
+        lst.append(2e-6, ModelTrainer(f'NN_{sel_name}-p_predictions-{n_models}_scale', selection_method=sel_name,
+                                      base_kernel='predictions', sel_with_train=False,
+                                      n_models=n_models, kernel_transforms=[('scale', [None])],
+                                      **kwargs))
+
+    # maxdiag kernel comparison
+    lst.append(8e-6, ModelTrainer(f'NN_maxdiag_predictions-{n_models}', selection_method='maxdiag',
+                                  base_kernel='predictions', kernel_transforms=[], sel_with_train=False,
+                                  n_models=n_models,
+                                  **kwargs))
+    lst.append(8e-6, ModelTrainer(f'NN_maxdiag_predictions-{n_models}_scale', selection_method='maxdiag',
+                                  base_kernel='predictions', kernel_transforms=[('scale', [None])],
+                                  sel_with_train=False,
+                                  n_models=n_models,
+                                  **kwargs))
+
+    # Frank-Wolfe kernel comparison
+    lst.append(8e-6, ModelTrainer(f'NN_fw-p_predictions-{n_models}', selection_method='fw',
+                                  base_kernel='predictions', kernel_transforms=[], sel_with_train=False,
+                                  n_models=n_models,
+                                  **kwargs))
+    lst.append(8e-6, ModelTrainer(f'NN_fw-p_predictions-{n_models}_scale', selection_method='fw',
+                                  base_kernel='predictions', kernel_transforms=[('scale', [None])],
+                                  sel_with_train=False,
+                                  n_models=n_models,
+                                  **kwargs))
+    return lst
 
 def get_bmdal_configs(**kwargs) -> RunConfigList:
     """
@@ -461,11 +560,15 @@ def run_experiments(exp_name: str, n_splits: int, run_config_list: RunConfigList
 
 
 def get_relu_configs() -> RunConfigList:
-    return get_bmdal_configs(weight_gain=0.2, bias_gain=0.2, post_sigma=1e-3, lr=0.375, act='relu')
+    lst_pred =get_bmdal_predictions_configs(weight_gain=0.2, bias_gain=0.2, post_sigma=1e-3, lr=0.375, act='relu')
+    lst_org = get_bmdal_configs( weight_gain=0.2, bias_gain=0.2, post_sigma=1e-3, lr=0.375, act='relu')
+    return lst_pred + lst_org
 
 
 def get_silu_configs() -> RunConfigList:
-    return get_bmdal_configs(weight_gain=0.5, bias_gain=1.0, post_sigma=1e-3, lr=0.15, act='silu')
+    lst_pred = get_bmdal_predictions_configs(weight_gain=0.5, bias_gain=1.0, post_sigma=1e-3, lr=0.15, act='silu')
+    lst_org = get_bmdal_configs(weight_gain=0.5, bias_gain=1.0, post_sigma=1e-3, lr=0.15, act='silu')
+    return lst_pred + lst_org
 
 
 if __name__ == '__main__':
@@ -476,7 +579,15 @@ if __name__ == '__main__':
          'NN_maxdist-p_grad_rp-512_train',
          'NN_maxdet-p_grad_rp-512_train',
          'NN_maxdiag_grad_rp-512_acs-rf-512',
-         'NN_bait-f-p_grad_rp-512_train'])
+         'NN_bait-f-p_grad_rp-512_train'] +
+        ['NN_lcmd-tp_predictions', 'NN_lcmd-tp_predictions_scale',
+         'NN_kmeanspp-p_predictions', 'NN_kmeanspp-p_predictions_scale',
+         'NN_fw-p_predictions', 'NN_fw-p_predictions_scale',
+         'NN_maxdist-p_predictions', 'NN_maxdist-p_predictions_scale'
+         'NN_maxdet-p_predictions', 'NN_maxdet-p_predictions_scale',
+         'NN_maxdiag_predictions', 'NN_maxdiag_predictions_scale',
+         'NN_bait-f-p_predictions', 'NN_bait-f-p_predictions_scale']
+    )
 
     # # ReLU experiments
     run_experiments('relu', 20, get_relu_configs(),

@@ -282,6 +282,10 @@ class BatchSelectorImpl:
                         grad_layers.append(grad_dict[type(layer)](layer))
                 feature_maps.append(create_grad_feature_map(model, grad_layers[-n_last_layers:],
                                                             use_float64=use_float64))
+        elif base_kernel == 'predictions':  # data -> predictions
+            feature_maps = [create_predictions_map(self.models, n_outputs=1, use_float64=use_float64)]
+            # We have ensembled the models in the feature map, so we set n_models to 1 here.
+            self.n_models = 1
         elif base_kernel == 'linear':
             feature_maps = [IdentityFeatureMap(n_features=self.data['train'].get_tensor(0).shape[-1]) for model in self.models]
             if use_float64:
@@ -296,7 +300,7 @@ class BatchSelectorImpl:
         self.features = {key: [Features(fm, feature_data) for fm in feature_maps]
                          for key, feature_data in self.data.items()}
 
-        if base_kernel in ['ll', 'grad']:
+        if base_kernel in ['ll', 'grad', 'predictions']:
             for i in range(self.n_models):
                 # use smaller batch size for NN evaluation
                 self.apply_tfm(i, BatchTransform(batch_size=nn_batch_size))

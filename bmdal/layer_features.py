@@ -45,6 +45,54 @@ class LayerGradientComputation:
         raise NotImplementedError()
 
 
+class ModelPredictionsTransform(DataTransform):
+    """
+    A DataTransform object that passes data through a NN model
+    in order to obtain feature data corresponding to the predictions
+    """
+    def __init__(self, models: List[nn.Module], n_outputs: int):
+        """
+        :param model: The model to be computed gradients of
+        :param grad_layers: All layers of the model whose parameters we want to compute gradients of
+        """
+        self.models = models
+        self.n_outputs = n_outputs
+
+    def forward(self, feature_data: FeatureData, idxs: Indexes) -> FeatureData:
+        """
+        :param feature_data: Feature data to be passed through the model
+        :param idxs: indexes of the feature data that should be passed through the model
+        :return: feature data provided by the layers
+        """
+        ys = []
+        with torch.inference_mode():
+            X = feature_data.get_tensor(idxs)
+
+            for model in self.models:
+                old_training = model.training
+
+                model.eval()
+
+                y = model(X)  # implicitly calls hooks that were set by l.before_forward()
+                assert len(y.shape) == 2 and y.shape[1] == self.n_outputs
+
+                model.train(old_training)
+
+                ys.append(y)
+
+        # center the predictions across the models
+        ys = torch.stack(ys, dim=-1)
+        y_mean = ys.mean(dim=-1, keepdim=True)
+        ys = (ys-y_mean) / len(self.models)
+
+        # Split the predictions (n_points, n_outputs, n_models)
+        # into n_outputs separate feature maps [(n_points, n_models)]
+        assert self.n_outputs == 1
+        print(ys.shape)
+        data = TensorFeatureData(ys[:, 0])
+        return data
+
+
 class ModelGradTransform(DataTransform):
     """
     A DataTransform object that passes data through a NN model
@@ -92,6 +140,19 @@ class ModelGradTransform(DataTransform):
             p.requires_grad = value
 
         return data
+
+
+def create_predictions_map(models: List[nn.Module], n_outputs, use_float64: bool = False) -> FeatureMap:
+    """
+    Creates a feature map corresponding to phi_{pred}
+    :param model: Model to compute predictions of
+    :param use_float64: Set to true if the prediction features should be converted to float64 after computing them
+    :return: Returns a feature map corresponding to phi_{pred}
+    """
+    tfms = [ModelPredictionsTransform(models, n_outputs)]
+    if use_float64:
+        tfms.append(ToDoubleTransform())
+    return SequentialFeatureMap(IdentityFeatureMap(n_outputs), tfms)
 
 
 def create_grad_feature_map(model: nn.Module, grad_layers: List[LayerGradientComputation],

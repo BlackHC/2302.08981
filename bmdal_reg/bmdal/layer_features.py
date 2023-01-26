@@ -1,6 +1,9 @@
+import sys
+
 import torch.nn as nn
 
 from .feature_maps import *
+from ..sklearn_models import SklearnModel
 from ..splittable_module import SplittableModule
 
 
@@ -66,8 +69,11 @@ class ModelPredictionsTransform(DataTransform):
         :return: feature data provided by the layers
         """
 
-        # Check whether the model is SplittableModule
-        if isinstance(self.models, SplittableModule):
+        if isinstance(self.models, SklearnModel):
+            X = feature_data.get_tensor(idxs)
+            ys = torch.as_tensor(self.models.sample_all(X.cpu().numpy()), device=X.device)[..., None]
+            assert len(ys.shape) == 3 and ys.shape[2] == self.n_outputs, f"{X.shape} {ys.shape}"
+        elif isinstance(self.models, SplittableModule):
             with torch.inference_mode():
                 X = feature_data.get_tensor(idxs)
 

@@ -4,6 +4,8 @@ from .data import *
 from . import utils
 from pathlib import Path
 
+from .sklearn_models import SklearnModel
+
 
 class ModelTrainer:
     def __init__(self, alg_name: str, create_model=create_tabular_model, n_models: int = 1, **config):
@@ -18,6 +20,122 @@ class ModelTrainer:
         return result_file
 
     def __call__(self, task_split: TaskSplit, device: str, do_timing: bool = False):
+        if issubclass(self.create_model, SklearnModel):
+            return self.run_sklearn_model(task_split, device, do_timing)
+        else:
+            return self.run_torch_model(task_split, device, do_timing)
+
+    def run_sklearn_model(self, task_split: TaskSplit, device: str, do_timing: bool = False):
+        # results_path = Path(custom_paths.get_results_path())
+        # result_file = results_path / task_split.task_name / self.alg_name / str(task_split.id) / 'results.json'
+        al_device = 'cpu' if self.config.get('al_on_cpu', False) else device
+
+        # can lead to imprecise distance calculations otherwise on devices with TF32
+        torch.backends.cuda.matmul.allow_tf32 = False
+
+        # if utils.existsFile(result_file) and not self.config.get('rerun', False):
+        #     print(f'Results already exist for {self.alg_name} on split {task_split.id} of task {task_split.task_name}',
+        #           flush=True)
+        #     return
+
+        print(f'Running {self.alg_name} on split {task_split.id} of task {task_split.task_name}',
+              flush=True)
+
+        np.random.seed(task_split.id)
+        torch.manual_seed(task_split.id)
+
+        base_kernel = self.config.get('base_kernel', None)
+        # task_split should contain train_idxs, valid_idxs, test_idxs, pool_idxs
+        train_idxs = torch.as_tensor(task_split.train_idxs, dtype=torch.int64, device=device)
+        valid_idxs = np.asarray(task_split.valid_idxs, dtype=np.int64)
+        pool_idxs = torch.as_tensor(task_split.pool_idxs, dtype=torch.int64, device=device)
+        test_idxs = torch.as_tensor(task_split.test_idxs, dtype=torch.int64, device=device)
+        data = task_split.data.to(device)
+        n_features = data.tensors['X'].shape[1]
+
+        train_timer = utils.Timer()
+        al_timer = utils.Timer()
+        al_stats_list = []
+
+        if base_kernel is None:
+            # train on random dataset
+            model: SklearnModel = self.create_model()
+            n_train_missing = sum(task_split.al_batch_sizes)
+            random_pool_idxs = pool_idxs[torch.randperm(len(task_split.pool_idxs), device=device)[:n_train_missing]]
+            train_idxs = torch.cat([train_idxs, random_pool_idxs])
+            train_timer.start()
+            model.fit(data.tensors['X'][train_idxs].cpu().numpy(), data.tensors['y'][train_idxs].cpu().numpy(),
+                      data.tensors['X'][valid_idxs].cpu().numpy(), data.tensors['y'][valid_idxs].cpu().numpy())
+            # fit_model(model, data, self.n_models, train_idxs, valid_idxs, **self.config)
+            train_timer.pause()
+            results = [test_model(model, data, self.n_models, test_idxs)]
+        else:
+            results = []
+
+            model: SklearnModel = self.create_model()
+            train_timer.start()
+
+            model.fit(data.tensors['X'][train_idxs].cpu().numpy(), data.tensors['y'][train_idxs].cpu().numpy(),
+                      data.tensors['X'][valid_idxs].cpu().numpy(), data.tensors['y'][valid_idxs].cpu().numpy())
+            # fit_model(model, data, self.n_models, train_idxs, valid_idxs, **self.config)
+            train_timer.pause()
+            results.append(test_model(model, data, self.n_models, test_idxs))
+
+            for al_step, al_batch_size in enumerate(task_split.al_batch_sizes):
+                print(
+                    f'Performing AL step {al_step + 1}/{len(task_split.al_batch_sizes)} with n_train={len(train_idxs)}'
+                    f', n_pool={len(pool_idxs)}, al_batch_size={al_batch_size}', flush=True)
+                # single_models = [model.get_single_model(i).to(al_device) for i in range(self.n_models)]
+                # single_models = model.to(al_device)
+                X = TensorFeatureData(data.tensors['X'].to(al_device))
+                feature_data = {'train': X[train_idxs],
+                                'pool': X[pool_idxs]}
+                y_train = data.tensors['y'][train_idxs].to(al_device)
+
+                al_timer.start()
+                new_idxs, al_stats = select_batch(models=model, data=feature_data, y_train=y_train,
+                                                  use_cuda_synchronize=do_timing,
+                                                  **utils.update_dict(self.config, {'batch_size': al_batch_size}))
+                al_timer.pause()
+                al_stats_list.append(al_stats)
+                if str(device).startswith('cuda'):
+                    with torch.cuda.device(device):
+                        torch.cuda.empty_cache()
+                new_idxs = new_idxs.to(device)
+                # print(f'{len(new_idxs)=}')
+                logical_new_idxs = torch.zeros(pool_idxs.shape[-1], dtype=torch.bool, device=device)
+                logical_new_idxs[new_idxs] = True
+                train_idxs = torch.cat([train_idxs, pool_idxs[logical_new_idxs]], dim=-1)
+                pool_idxs = pool_idxs[~logical_new_idxs]
+                # print(f'{train_idxs.shape[-1]=}')
+                # print(f'{pool_idxs.shape[-1]=}')
+
+                model = self.create_model()
+                train_timer.start()
+                model.fit(data.tensors['X'][train_idxs].cpu().numpy(), data.tensors['y'][train_idxs].cpu().numpy(),
+                          data.tensors['X'][valid_idxs].cpu().numpy(), data.tensors['y'][valid_idxs].cpu().numpy())
+                # fit_model(model, data, self.n_models, train_idxs, valid_idxs, **self.config)
+                train_timer.pause()
+                results.append(test_model(model, data, self.n_models, test_idxs))
+
+        extended_config = utils.join_dicts(self.config, {'alg_name': self.alg_name, 'n_models': self.n_models})
+
+        results = {'errors': {key: [r[key] for r in results] for key in ['mae', 'rmse', 'maxe', 'q95', 'q99']},
+                   'train_times': train_timer.get_result_dict(),
+                   'al_times': al_timer.get_result_dict(),
+                   'al_stats': al_stats_list,
+                   'config': extended_config}
+
+        # if self.config.get('save', True):
+        #     utils.serialize(result_file, results, use_json=True)
+
+        print(
+            f'Finished running {self.alg_name} on split {task_split.id} of task {task_split.task_name} on device {device}',
+            flush=True)
+
+        return results
+
+    def run_torch_model(self, task_split: TaskSplit, device: str, do_timing: bool = False):
         # results_path = Path(custom_paths.get_results_path())
         # result_file = results_path / task_split.task_name / self.alg_name / str(task_split.id) / 'results.json'
         al_device = 'cpu' if self.config.get('al_on_cpu', False) else device
@@ -69,9 +187,10 @@ class ModelTrainer:
             results.append(test_model(model, data, self.n_models, test_idxs))
 
             for al_step, al_batch_size in enumerate(task_split.al_batch_sizes):
-                print(f'Performing AL step {al_step+1}/{len(task_split.al_batch_sizes)} with n_train={len(train_idxs)}'
-                      f', n_pool={len(pool_idxs)}, al_batch_size={al_batch_size}', flush=True)
-                #single_models = [model.get_single_model(i).to(al_device) for i in range(self.n_models)]
+                print(
+                    f'Performing AL step {al_step + 1}/{len(task_split.al_batch_sizes)} with n_train={len(train_idxs)}'
+                    f', n_pool={len(pool_idxs)}, al_batch_size={al_batch_size}', flush=True)
+                # single_models = [model.get_single_model(i).to(al_device) for i in range(self.n_models)]
                 single_models = model.to(al_device)
                 X = TensorFeatureData(data.tensors['X'].to(al_device))
                 feature_data = {'train': X[train_idxs],
@@ -113,7 +232,9 @@ class ModelTrainer:
         # if self.config.get('save', True):
         #     utils.serialize(result_file, results, use_json=True)
 
-        print(f'Finished running {self.alg_name} on split {task_split.id} of task {task_split.task_name} on device {device}', flush=True)
+        print(
+            f'Finished running {self.alg_name} on split {task_split.id} of task {task_split.task_name} on device {device}',
+            flush=True)
 
         return results
 
@@ -128,7 +249,7 @@ def test_model(model, data, n_models, test_idxs):
         errors = torch.cat([torch.abs(batch['y'] - model(batch['X'])) for batch in test_dl], dim=1).squeeze(-1)
     n_models = errors.shape[0]
     mae = errors.mean().item()
-    rmse = (errors**2).mean().sqrt().item()
+    rmse = (errors ** 2).mean().sqrt().item()
     maxe = torch.max(errors, dim=1)[0].mean().item()
     q95_errors = []
     q99_errors = []
@@ -168,15 +289,15 @@ def fit_model(model, data, n_models, train_idxs, valid_idxs, n_epochs=256, batch
         for batch in train_dl:
             X, y = batch['X'], batch['y']
             y_pred = model(X)  # shape: n_models x batch_size x 1
-            loss = ((y - y_pred)**2).mean(dim=-1).mean(dim=-1).sum()  # sum over n_models
+            loss = ((y - y_pred) ** 2).mean(dim=-1).mean(dim=-1).sum()  # sum over n_models
             loss.backward()
             if lr_sched == 'lin':
                 current_lr = lr * (1.0 - step / n_steps)
             elif lr_sched == 'hat':
-                current_lr = lr * 2 * (0.5 - np.abs(0.5 - step/n_steps))
+                current_lr = lr * 2 * (0.5 - np.abs(0.5 - step / n_steps))
             elif lr_sched == 'warmup':
                 peak_at = 0.1
-                current_lr = lr * min((step/n_steps)/peak_at, (1-step/n_steps)/(1-peak_at))
+                current_lr = lr * min((step / n_steps) / peak_at, (1 - step / n_steps) / (1 - peak_at))
             else:
                 raise ValueError(f'Unknown lr sched "{lr_sched}"')
             for group in opt.param_groups:
@@ -200,7 +321,7 @@ def fit_model(model, data, n_models, train_idxs, valid_idxs, n_epochs=256, batch
             #     for ll in linear_layers]
             for batch in valid_dl:
                 X, y = batch['X'], batch['y']
-                valid_sses = valid_sses + ((y - model(X))**2).mean(dim=-1).sum(dim=-1)
+                valid_sses = valid_sses + ((y - model(X)) ** 2).mean(dim=-1).sum(dim=-1)
             valid_rmses = torch.sqrt(valid_sses / len(valid_idxs)).detach().cpu().numpy()
             # for hook in hooks:
             #     hook.remove()
@@ -221,9 +342,3 @@ def fit_model(model, data, n_models, train_idxs, valid_idxs, n_epochs=256, batch
     with torch.no_grad():
         for p, best_p in zip(model.parameters(), best_model_params):
             p.set_(best_p)
-
-
-
-
-
-

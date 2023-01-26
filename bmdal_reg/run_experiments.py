@@ -71,7 +71,7 @@ def get_bmdal_predictions_configs(**kwargs) -> RunConfigList:
 
     lst = RunConfigList()
 
-    mem_threshold = 2e-6
+    mem_threshold = 9e-6
 
     # bait kernel comparison
     for fb_mode, overselection_factor in [('f', 1.0), ('fb', 2.0)]:
@@ -104,28 +104,30 @@ def get_bmdal_predictions_configs(**kwargs) -> RunConfigList:
                                           kernel_transforms=[],
                                           **kwargs))
 
+    bs_mem_threshold = 8e-8
+
     # maxdet kernel comparison
-    lst.append(mem_threshold, ModelTrainer(f'NN_maxdet-p_predictions-{n_models}_scale', selection_method='maxdet',
+    lst.append(1e-5, ModelTrainer(f'NN_maxdet-p_predictions-{n_models}_scale', selection_method='maxdet',
                                   base_kernel='predictions', n_models=n_models,
                                   sel_with_train=False,
                                   kernel_transforms=[('scale', [None])],
-                                  **kwargs), 8e-9)
+                                  **kwargs), bs_mem_threshold)
 
-    lst.append(mem_threshold, ModelTrainer(f'NN_maxdet-p_predictions-{n_models}', selection_method='maxdet',
+    lst.append(1e-5, ModelTrainer(f'NN_maxdet-p_predictions-{n_models}', selection_method='maxdet',
                                   base_kernel='predictions', n_models=n_models, sel_with_train=False,
                                   kernel_transforms=[],
-                                  **kwargs), 8e-9)
+                                  **kwargs), bs_mem_threshold)
 
-    lst.append(mem_threshold, ModelTrainer(f'NN_maxdet-tp_predictions-{n_models}_scale', selection_method='maxdet',
+    lst.append(1e-5, ModelTrainer(f'NN_maxdet-tp_predictions-{n_models}_scale', selection_method='maxdet',
                                   base_kernel='predictions', sel_with_train=True,
                                   n_models=n_models, kernel_transforms=[('scale', [None])],
-                                  **kwargs), 8e-9)
+                                  **kwargs), bs_mem_threshold)
 
-    lst.append(mem_threshold, ModelTrainer(f'NN_maxdet-tp_predictions-{n_models}', selection_method='maxdet',
+    lst.append(1e-5, ModelTrainer(f'NN_maxdet-tp_predictions-{n_models}', selection_method='maxdet',
                                   base_kernel='predictions', sel_with_train=True,
                                   kernel_transforms=[],
                                   n_models=n_models,
-                                  **kwargs), 8e-9)
+                                  **kwargs), bs_mem_threshold)
 
     # maxdist, kmeanspp, lcmd kernel comparisons
     for sel_name in ['maxdist', 'kmeanspp', 'lcmd']:

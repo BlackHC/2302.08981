@@ -1,3 +1,5 @@
+from inspect import isclass
+
 from bmdal_reg.bmdal.algorithms import select_batch
 from .models import *
 from .data import *
@@ -20,7 +22,7 @@ class ModelTrainer:
         return result_file
 
     def __call__(self, task_split: TaskSplit, device: str, do_timing: bool = False):
-        if issubclass(self.create_model, SklearnModel):
+        if isclass(self.create_model) and issubclass(self.create_model, SklearnModel):
             return self.run_sklearn_model(task_split, device, do_timing)
         else:
             return self.run_torch_model(task_split, device, do_timing)

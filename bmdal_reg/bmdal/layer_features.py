@@ -101,7 +101,7 @@ class ModelPredictionsTransform(DataTransform):
             ys = torch.stack(ys, dim=0)
         # center the predictions across the models
         y_mean = ys.mean(dim=0, keepdim=True)
-        ys = (ys-y_mean) / len(self.models)
+        ys = (ys-y_mean) / len(self.models)**0.5
 
         # Split the predictions (n_points, n_outputs, n_models)
         # into n_outputs separate feature maps [(n_points, n_models)]

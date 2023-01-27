@@ -322,9 +322,12 @@ class BatchALJob(AbstractJob):
 
     def get_ram_usage_gb(self) -> float:
         max_bs = (max(self.task.al_batch_sizes) if len(self.task.al_batch_sizes) > 0 else 0)
-        return 0.2 + self.task.data_info.n_samples * self.task.data_info.n_features * 8 / (1024**3) \
+        estimate = 0.2 + self.task.data_info.n_samples * self.task.data_info.n_features * 8 / (1024**3) \
                + (self.task.n_train + self.task.n_pool) * self.ram_gb_per_sample \
                + (self.task.n_train + self.task.n_pool) * max_bs * self.ram_gb_per_sample_bs
+        # print(f'RAM estimate for {self.trainer.alg_name} on split {self.split_id} of task {self.task.task_name}:')
+        # print(f'  {estimate:g} GB')
+        return estimate
 
     def get_desc(self) -> str:
         return f'{self.trainer.alg_name} on split {self.split_id} of task {self.task.task_name}'

@@ -128,9 +128,10 @@ class ExperimentResults:
                         if eff_dim > eff_dim_ll:
                             n_larger += 1
 
-        print(f'eff dim was larger for grad_rp-512 than for ll in {100*n_larger/n_total:g}% of cases')
-        print(f'avg eff dim for grad_rp-512: {eff_dim_sum_grad/n_total:g}')
-        print(f'avg eff dim for ll: {eff_dim_sum_ll/n_total:g}')
+        if n_total:
+            print(f'eff dim was larger for grad_rp-512 than for ll in {100*n_larger/n_total:g}% of cases')
+            print(f'avg eff dim for grad_rp-512: {eff_dim_sum_grad/n_total:g}')
+            print(f'avg eff dim for ll: {eff_dim_sum_ll/n_total:g}')
 
     @staticmethod
     def load(exp_name: str) -> 'ExperimentResults':
@@ -215,7 +216,7 @@ def get_latex_task(task: str) -> str:
     return conversion_dict[task]
 
 
-def get_latex_selection_method(selection_method: str) -> str:
+def get_latex_selection_method(selection_method: str, is_black_box=False) -> str:
     conversion_dict = {'random': r'\textsc{Random}',
                        'fw': r'\textsc{FrankWolfe}',
                        'bait-f': r'\textsc{Bait-F}',
@@ -232,8 +233,12 @@ def get_latex_selection_method(selection_method: str) -> str:
     result = conversion_dict[method_name]
     if len(parts) > 1:
         result += '-TP' if parts[-1] == 'tp' else '-P'
-    if method_name == 'lcmd':
-        result += ' (ours)'
+    if is_black_box:
+        result = 'BB ' + result
+    else:
+        result = 'WB ' + result
+    # if method_name == 'lcmd':
+    #     result += ' (ours)'
     return result
 
 
@@ -241,7 +246,8 @@ def get_latex_kernel(base_kernel: str, kernel_transformations: List[Tuple[str, L
     conversion_base_kernel_dict = {'grad': r'\mathrm{grad}',
                                    'll': r'\mathrm{ll}',
                                    'linear': r'\mathrm{lin}',
-                                   'nngp': r'\mathrm{nngp}'}
+                                   'nngp': r'\mathrm{nngp}',
+                                   'predictions': r'\mathrm{pred}'}
 
     steps = [conversion_base_kernel_dict[base_kernel]]
 
@@ -278,13 +284,13 @@ def save_latex_table_all_algs(results: ExperimentResults, filename: str):
     q95 = results.get_avg_errors('q95')
     q99 = results.get_avg_errors('q99')
     maxe = results.get_avg_errors('maxe')
-    kernel_time = results.get_avg_al_times('kernel_time').select_split(9)
-    selection_time = results.get_avg_al_times('selection_time').select_split(9)
+    kernel_time = results.get_avg_al_times('kernel_time').select_split(0)
+    selection_time = results.get_avg_al_times('selection_time').select_split(0)
 
     metrics_and_names = [('MAE', mae), ('RMSE', rmse), (r'95\%', q95), (r'99\%', q99), ('MAXE', maxe),
                          ('kernel_time', kernel_time), ('selection_time', selection_time)]
     alg_metrics = {alg_name: {name: np.mean([np.mean(metric.results_dict[alg_name][ds_name + '_256x16'])
-                                             for ds_name in ds_names])
+                                             for ds_name in ds_names if ds_name + '_256x16' in metric.results_dict[alg_name]])
                     for name, metric in metrics_and_names} for alg_name in all_alg_names}
 
     n_digits = 3
@@ -313,7 +319,7 @@ def save_latex_table_all_algs(results: ExperimentResults, filename: str):
         n_models = config.get('n_models', 1)
 
         raw_sel_name = name_alg.split('_')[1].split('-')[0]
-        sel_name = get_latex_selection_method(name_alg.split('_')[1])
+        sel_name = get_latex_selection_method(name_alg.split('_')[1], "predictions" in name_alg)
         raw_sel_names[name_alg] = raw_sel_name
         kernel_name = get_latex_kernel(base_kernel, kernel_transformations, n_models=n_models)
         if raw_sel_name == 'random':
@@ -364,7 +370,7 @@ def save_latex_table_data_sets(results: ExperimentResults, filename: str, use_lo
 
     table_list = []
     table_header = '\\begin{tabular}{' + ('c' * (len(alg_names)+1)) + '}\n' + \
-                   ' & '.join([r'Data set'] + [get_latex_selection_method(alg_name.split('_')[1])
+                   ' & '.join([r'Data set'] + [get_latex_selection_method(alg_name.split('_')[1], "predictions" in alg_name)
                                                for alg_name in alg_names]) + '\\\\\n\\hline\n'
     table_footer = '\n\\end{tabular}'
 

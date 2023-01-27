@@ -86,13 +86,13 @@ def plot_batch_sizes_ax(ax: plt.Axes, results: ExperimentResults, metric_name: s
             plus = np.mean(log_means) + np.linalg.norm(alg_stds) / len(alg_stds)
             ax.axhspan(minus, plus, alpha=0.2, facecolor='k', edgecolor=None)
             ax.axhline(y=np.mean(log_means), ls='--', color='k',
-                        label=get_latex_selection_method(alg_name.split('_')[1]))
+                        label=get_latex_selection_method(alg_name.split('_')[1], "predictions" in alg_name))
         else:
             minus = np.mean(log_means, axis=0) - np.linalg.norm(alg_stds, axis=0) / len(alg_stds)
             plus = np.mean(log_means, axis=0) + np.linalg.norm(alg_stds, axis=0) / len(alg_stds)
             ax.fill_between(np.log(ds_batch_sizes[0]), minus, plus, facecolor=colors[color_idx], alpha=0.2)
             ax.plot(np.log(ds_batch_sizes[0]), np.mean(log_means, axis=0), '--', marker=markers[color_idx],
-                    label=get_latex_selection_method(alg_name.split('_')[1]), color=colors[color_idx], **plot_options)
+                    label=get_latex_selection_method(alg_name.split('_')[1], "predictions" in alg_name), color=colors[color_idx], **plot_options)
             color_idx += 1
 
     if set_ticks_and_labels:
@@ -224,6 +224,7 @@ def plot_learning_curves_ax(ax: plt.Axes, results: ExperimentResults, metric_nam
 
     ds_names = list({'_'.join(task_name.split('_')[:-1]) for task_name in results.task_names})
 
+    pred_color_idx = 0
     color_idx = 0
 
     for i, alg_name in enumerate(results.alg_names):
@@ -231,18 +232,24 @@ def plot_learning_curves_ax(ax: plt.Axes, results: ExperimentResults, metric_nam
         results_list = np.mean(log_means, axis=0)
         n_train = np.asarray([256*(i+1) for i in range(len(results_list))])
 
-        plot_options = utils.update_dict(dict(alpha=1.0, markersize=3.5), plot_options)
+        plot_options = utils.update_dict(dict(alpha=0.7, markersize=3.5), plot_options)
 
-        label = get_latex_selection_method(alg_name.split('_')[1]) if labels is None else labels[i]
+        label = get_latex_selection_method(alg_name.split('_')[1], "predictions" in alg_name) if labels is None else labels[i]
 
         if alg_name == 'NN_random':
             ax.plot(np.log(n_train), results_list, '--o', color='k', label=label, **plot_options)
             if with_random_final:
                 ax.plot([np.log(n_train[0]), np.log(n_train[-1])], [results_list[-1], results_list[-1]],
-                        '--', color='k', **plot_options)
-        else:
-            ax.plot(np.log(n_train), results_list, '--', marker=markers[color_idx], color=colors[color_idx],
+                        '--', color='k', linewidth=0.5, **plot_options)
+        elif "predictions" in alg_name:
+            # ax.plot(np.log(n_train), results_list, '-', marker=markers[pred_color_idx], color=colors[pred_color_idx],
+            ax.plot(np.log(n_train), results_list, '-', color=colors[pred_color_idx],
                     label=label, **plot_options)
+            pred_color_idx += 1
+        else:
+            # ax.plot(np.log(n_train), results_list, '--', marker=markers[color_idx], color=colors[color_idx],
+            ax.plot(np.log(n_train), results_list, '--', color=colors[color_idx],
+                    label=label, linewidth=1., **plot_options)
             color_idx += 1
 
     if set_ticks_and_labels:
@@ -263,7 +270,7 @@ def plot_learning_curves(results: ExperimentResults, filename: Union[str, Path],
 
     plot_learning_curves_ax(axs, results=results, metric_name=metric_name, labels=labels)
 
-    axs.legend()
+    axs.legend(ncol=2)
     plt.tight_layout()
     plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
     utils.ensureDir(plot_name)
@@ -279,7 +286,8 @@ def plot_multiple_learning_curves(results: ExperimentResults, filename: Union[st
     for i, metric_name in enumerate(metric_names):
         plot_learning_curves_ax(axs[i], results, metric_name=metric_name)
 
-    fig.legend(*axs[0].get_legend_handles_labels(), loc='upper center', bbox_to_anchor=(0.5, 0.15), ncol=4)
+    #fig.legend(*axs[0].get_legend_handles_labels(), loc='upper center', bbox_to_anchor=(0.5, 0.15), ncol=4)
+    fig.legend(*axs[0].get_legend_handles_labels(), ncol=4, loc='lower center')
     plt.tight_layout(rect=[0, 0.15, 1.0, 1.0])
     plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
     utils.ensureDir(plot_name)
@@ -319,7 +327,8 @@ def plot_learning_curves_individual_subplots(results: ExperimentResults, filenam
         j = ds_idx % 3
         ax = axs[i, j]
         plot_learning_curves_ax(ax, results.filter_task_names([ds_name + '_256x16']), metric_name=metric_name,
-                                set_ticks_and_labels=False, alpha=0.8, markersize=3, linewidth=1.0, markeredgewidth=0.0)
+                                #set_ticks_and_labels=False, alpha=0.8, markersize=3, linewidth=1.0, markeredgewidth=0.0)
+                                set_ticks_and_labels=False, markersize=3, markeredgewidth=0.0)
 
         xlocs = [np.log(256), np.log(512), np.log(1024), np.log(2048), np.log(4096)]
         xlabels = ('256', '512', '1024', '2048', '4096')
@@ -413,9 +422,9 @@ def plot_correlation_between_methods(results: ExperimentResults, filename: Union
                     k += 1
 
                 if i == 0:
-                    axs[j - 1, i].set_ylabel(get_latex_selection_method(alg_name_j.split('_')[1]), **axis_font)
+                    axs[j - 1, i].set_ylabel(get_latex_selection_method(alg_name_j.split('_')[1], "predictions" in alg_name_j), **axis_font)
                 if j == len(alg_names)-1:
-                    axs[j - 1, i].set_xlabel(get_latex_selection_method(alg_name_i.split('_')[1]), **axis_font)
+                    axs[j - 1, i].set_xlabel(get_latex_selection_method(alg_name_i.split('_')[1], "predictions" in alg_name_j), **axis_font)
 
     for i in range(len(alg_names)):
         for j in range(i+1, len(alg_names)):
@@ -480,7 +489,7 @@ def plot_skewness_ax(ax: plt.Axes, results: ExperimentResults, metric_name: str,
         y_values.append(y_value)
         ax.plot(x_value, y_value, 'o', alpha=alpha, label=get_latex_task(task_name.split('_256')[0]),
                 markersize=markersize, color=c[task_idx], markeredgewidth=0.0)
-        sel_method_name = get_latex_selection_method(alg_name.split('_')[1])
+        sel_method_name = get_latex_selection_method(alg_name.split('_')[1], "predictions" in alg_name)
         latex_metric_name = get_latex_metric_name(metric_name)
         if use_relative_improvement:
             ax.set_ylabel(f'Relative improvement of {sel_method_name}', **axis_font)

@@ -1,3 +1,5 @@
+import argparse
+
 from bmdal_reg import sklearn_models
 from .task_execution import *
 from .train import ModelTrainer
@@ -26,6 +28,15 @@ class RunConfigList:
         :return: Returns a new RunConfigList that contains all configurations of self and other.
         """
         return RunConfigList(self.configs + other.configs)
+
+    def distribute_jobs(self, job_index: int, num_jobs: int):
+        """
+        Distribute the jobs among the given number of jobs.
+        :param job_index: Job number.
+        :param num_jobs: Number of jobs.
+        :return: Returns a new RunConfigList that contains all configurations of self and other.
+        """
+        return RunConfigList(self.configs[job_index::num_jobs])
 
     def append(self, ram_gb_per_sample: float, trainer: ModelTrainer, ram_gb_per_sample_bs: float = 0.0):
         """
@@ -101,6 +112,9 @@ def get_bmdal_sklearn_predictions_configs(*, prefix, mem_threshold=9e-6, bs_mem_
         lst.append(mem_threshold, ModelTrainer(f'{prefix}_{sel_name}-tp_predictions-{n_models}', selection_method=sel_name,
                                       base_kernel='predictions', kernel_transforms=[], sel_with_train=True,
                                       n_models=n_models, **kwargs))
+        lst.append(mem_threshold, ModelTrainer(f'{prefix}_{sel_name}-p_predictions-{n_models}', selection_method=sel_name,
+                                      base_kernel='predictions', kernel_transforms=[], sel_with_train=False,
+                                      n_models=n_models, **kwargs))
         # lst.append(mem_threshold, ModelTrainer(f'{prefix}_{sel_name}-tp_predictions-{n_models}_scale', selection_method=sel_name,
         #                               base_kernel='predictions', sel_with_train=True,
         #                               n_models=n_models, kernel_transforms=[('scale', [None])],
@@ -149,13 +163,23 @@ def get_bmdal_sklearn_predictions_configs(*, prefix, mem_threshold=9e-6, bs_mem_
     #                               **kwargs))
 
     # Frank-Wolfe kernel comparison
-    # lst.append(mem_threshold, ModelTrainer(f'{prefix}_fw-p_predictions-{n_models}', selection_method='fw',
-    #                               base_kernel='predictions', kernel_transforms=[], sel_with_train=False,
-    #                               n_models=n_models,
-    #                               **kwargs))
+    lst.append(mem_threshold, ModelTrainer(f'{prefix}_fw-p_predictions-{n_models}', selection_method='fw',
+                                  base_kernel='predictions', kernel_transforms=[], sel_with_train=False,
+                                  n_models=n_models,
+                                  **kwargs))
     # lst.append(mem_threshold, ModelTrainer(f'{prefix}_fw-p_predictions-{n_models}_scale', selection_method='fw',
     #                               base_kernel='predictions', kernel_transforms=[('scale', [None])],
     #                               sel_with_train=False,
+    #                               n_models=n_models,
+    #                               **kwargs))
+
+    lst.append(mem_threshold, ModelTrainer(f'{prefix}_fw-tp_predictions-{n_models}', selection_method='fw',
+                                  base_kernel='predictions', kernel_transforms=[], sel_with_train=True,
+                                  n_models=n_models,
+                                  **kwargs))
+    # lst.append(mem_threshold, ModelTrainer(f'{prefix}_fw-tp_predictions-{n_models}_scale', selection_method='fw',
+    #                               base_kernel='predictions', kernel_transforms=[('scale', [None])],
+    #                               sel_with_train=True,
     #                               n_models=n_models,
     #                               **kwargs))
 
@@ -714,6 +738,14 @@ def get_silu_configs() -> RunConfigList:
 
 
 if __name__ == '__main__':
+    # Commandline args for current job index
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--job_index', type=int, default=0)
+    parser.add_argument('--num_jobs', type=int, default=1)
+    args = parser.parse_args()
+    job_index = args.job_index
+    num_jobs = args.num_jobs
+
     use_pool_for_normalization = True
 
     relu_bs_configs = get_relu_configs().filter_names(
@@ -732,20 +764,20 @@ if __name__ == '__main__':
     )
 
     # Sklearn experiments
-    run_experiments('sklearn', 20, get_sklearn_configs(),
+    run_experiments('sklearn', 20, get_sklearn_configs().distribute_jobs(job_index, num_jobs),
                     use_pool_for_normalization=use_pool_for_normalization)
 
     # # ReLU experiments
-    run_experiments('relu', 20, get_relu_configs(),
+    run_experiments('relu', 20, get_relu_configs().distribute_jobs(job_index, num_jobs),
                     use_pool_for_normalization=use_pool_for_normalization)
-    # SiLU experiments, without batch size experiments
-    run_experiments('silu', 20, get_silu_configs(),
-                    use_pool_for_normalization=use_pool_for_normalization)
+    # # SiLU experiments, without batch size experiments
+    # run_experiments('silu', 20, get_silu_configs(),
+    #                 use_pool_for_normalization=use_pool_for_normalization)
     # # ReLU batch size experiments
-    run_experiments('relu', 20, relu_bs_configs,
-                    batch_sizes_configs=[[2**(12-m)]*(2**m) for m in range(7) if m != 4],
-                    task_descs=[f'{2**(12-m)}x{2**m}' for m in range(7) if m != 4],
-                    use_pool_for_normalization=use_pool_for_normalization)
+    # run_experiments('relu', 20, relu_bs_configs,
+    #                 batch_sizes_configs=[[2**(12-m)]*(2**m) for m in range(7) if m != 4],
+    #                 task_descs=[f'{2**(12-m)}x{2**m}' for m in range(7) if m != 4],
+    #                 use_pool_for_normalization=use_pool_for_normalization)
 
     # for hyperparameter optimization
     # run_experiments('relu_tuning', 2, get_relu_tuning_configs(),

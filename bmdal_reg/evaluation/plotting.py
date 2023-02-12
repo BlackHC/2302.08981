@@ -22,7 +22,8 @@ import seaborn as sns
 
 fontsize = 10
 axis_font = {'size': str(fontsize)}
-sns.axes_style("whitegrid")
+#sns.axes_style("whitegrid")
+sns.set_style("whitegrid")
 
 
 def escape(name: str):
@@ -267,6 +268,62 @@ def plot_learning_curves_ax(ax: plt.Axes, results: ExperimentResults, metric_nam
         ax.set_ylabel(r'mean log ' + f'{get_latex_metric_name(metric_name)}', **axis_font)
 
 
+def plot_learning_curves_ax_ci(ax: plt.Axes, results: ExperimentResults, metric_name: str, with_random_final: bool = True,
+                            set_ticks_and_labels: bool = True, labels: Optional[List[str]] = None, **plot_options):
+    learning_curves_ci = results.get_learning_curves_ci(metric_name)
+
+
+    # https://stackoverflow.com/questions/42086276/get-default-line-colour-cycle
+    # default matplotlib colors:
+    # colors = [u'#1f77b4', u'#ff7f0e', u'#2ca02c', u'#d62728', u'#9467bd', u'#8c564b', u'#e377c2', u'#7f7f7f',
+    #           u'#bcbd22', u'#17becf']
+    # colors = [u'#a06010', u'#d62728', u'#2ca02c', u'#ff7f0e', u'#9467bd', u'#17becf', u'#e377c2', u'#7f7f7f',
+    #           u'#bcbd22', u'#1f77b4']
+
+    ds_names = list({'_'.join(task_name.split('_')[:-1]) for task_name in results.task_names})
+
+    pred_color_idx = 0
+    color_idx = 0
+
+    random_name = find_random_name(results)
+
+    for i, alg_name in enumerate(results.alg_names):
+        log_means_ci = [learning_curves_ci.results_dict[alg_name][ds_name + '_256x16'] for ds_name in ds_names]
+        results_list_ci = np.mean(log_means_ci, axis=0)
+        print(results_list_ci.shape)
+        n_train = np.asarray([256*(i+1) for i in range(results_list_ci.shape[1])])
+
+        plot_options = utils.update_dict(dict(alpha=0.7, markersize=3.5), plot_options)
+
+        label = get_latex_selection_method(alg_name.split('_')[1], "predictions" in alg_name) if labels is None else labels[i]
+
+        if alg_name == random_name:
+            ax.plot(np.log(n_train), results_list_ci[1], '--o', color='k', label=label, **plot_options)
+            if with_random_final:
+                ax.plot([np.log(n_train[0]), np.log(n_train[-1])], [results_list_ci[1, -1], results_list_ci[1, -1]],
+                        '--', color='k', linewidth=0.5, **plot_options)
+        elif "predictions" in alg_name:
+            ax.fill_between(np.log(n_train), results_list_ci[0], results_list_ci[2], facecolor=colors[pred_color_idx], alpha=0.2)
+            ax.plot(np.log(n_train), results_list_ci[1], '-', color=colors[pred_color_idx],
+                     label=label, **plot_options)
+            pred_color_idx += 1
+        else:
+            ax.fill_between(np.log(n_train), results_list_ci[0], results_list_ci[2], facecolor=colors[color_idx], alpha=0.2)
+            ax.plot(np.log(n_train), results_list_ci[1], '--',  color=colors[color_idx],
+                     label=label, **plot_options)
+            color_idx += 1
+
+    if set_ticks_and_labels:
+        xlocs = (np.log(256), np.log(512), np.log(1024), np.log(2048), np.log(4096))
+        xlabels = ('256', '512', '1024', '2048', '4096')
+
+        ax.set_xticks(xlocs)
+        ax.set_xticklabels(xlabels)
+
+        ax.set_xlabel(r'Training set size $N_{\mathrm{train}}$', **axis_font)
+        ax.set_ylabel(r'mean log ' + f'{get_latex_metric_name(metric_name)}', **axis_font)
+
+
 def plot_learning_curves(results: ExperimentResults, filename: Union[str, Path], metric_name: str,
                          labels: Optional[List[str]] = None, figsize: Optional[Tuple[float, float]] = None):
     # plot averaged learning curve for all tasks
@@ -355,7 +412,7 @@ def plot_learning_curves_individual_subplots(results: ExperimentResults, filenam
     plt.close(fig)
 
 
-def plot_learning_curves_metrics_subplots(results: ExperimentResults, filename: Union[str, Path]):
+def plot_learning_curves_metrics_subplots(results: ExperimentResults, filename: Union[str, Path], labels: Optional[List[str]] = None):
     # plot mean final log metric against the al batch size
     fig, axs = plt.subplots(3, 2, figsize=(7.2, 9))
     metric_names = ['mae', 'rmse', 'q95', 'q99', 'maxe']
@@ -363,10 +420,10 @@ def plot_learning_curves_metrics_subplots(results: ExperimentResults, filename: 
         i = metric_idx // 2
         j = metric_idx % 2
         ax = axs[i, j]
-        plot_learning_curves_ax(ax, results, metric_name)
+        plot_learning_curves_ax(ax, results, metric_name, labels=labels)
 
     axs[-1, -1].axis('off')
-    fig.legend(*axs[0, 0].get_legend_handles_labels(), loc='center', bbox_to_anchor=(0.78, 0.18), ncol=1)
+    fig.legend(*axs[0, 0].get_legend_handles_labels(), loc='center', bbox_to_anchor=(0.78, 0.18), ncol=2)
     plt.tight_layout()
     plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
     utils.ensureDir(plot_name)

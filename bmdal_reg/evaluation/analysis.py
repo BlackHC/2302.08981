@@ -27,6 +27,11 @@ class ExperimentResults:
                                              for task_name, split_results in task_results.items() if int(task_name.split('_')[-1].split('x')[0]) == 256}
                                   for alg_name, task_results in self.results_dict.items()}, exp_name=self.exp_name)
 
+    def get_learning_curves_ci(self, key: str) -> 'ExperimentResults':
+        return ExperimentResults({alg_name: {task_name: np.log(np.quantile([split['errors'][key] for split in split_results], q=[0.25, 0.5, 0.75], axis=0))
+                                             for task_name, split_results in task_results.items() if int(task_name.split('_')[-1].split('x')[0]) == 256}
+                                  for alg_name, task_results in self.results_dict.items()}, exp_name=self.exp_name)
+
     def get_avg_al_stats(self, key: str) -> 'ExperimentResults':
         return self.map_single_split(
             lambda split_dict: [stat[key] for stat in split_dict['al_stats'] if key in stat])

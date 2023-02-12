@@ -7,48 +7,49 @@ from bmdal_reg.evaluation.visualize_lcmd import create_lcmd_plots
 # Create a dictionary of LIT_RESULTS_NN_BMDAL with the corresponding labels from LIT_RESULTS_LABELS
 LIT_RESULTS_NN_BMDAL_DICT = {
     'NN_random': 'Uniform',
-    'NN_maxdiag_ll_train': 'WB-BALD',
-    'NN_maxdet-p_ll_train': 'WB-BatchBALD',
-    'NN_bait-fb-p_ll_train': 'WB-BAIT',
-    'NN_fw-p_ll_acs-rf-hyper-512': 'WB-ACS-FW',
-    'NN_maxdist-tp_ll': 'WB-Core-Set / FF-Active',
-    'NN_kmeanspp-p_ll_train': 'WB-BADGE',
-    'NN_lcmd-tp_grad_rp-512': 'WB-LCMD'
+    'NN_maxdiag_ll_train': r'$\square$ BALD',
+    'NN_maxdet-p_ll_train': r'$\square$ BatchBALD',
+    'NN_bait-fb-p_ll_train': r'$\square$ BAIT',
+    'NN_fw-p_ll_acs-rf-hyper-512': r'$\square$ ACS-FW',
+    'NN_maxdist-tp_ll': r'$\square$ Core-Set/\\FF-Active',
+    'NN_kmeanspp-p_ll_train': r'$\square$ BADGE',
+    'NN_lcmd-tp_grad_rp-512': r'$\square$ LCMD'
 }
 
 # Create a dictionary of LIT_RESULTS_NN_PREDICTIONS with the corresponding labels from LIT_RESULTS_NN_PREDICTIONS_LABELS
 LIT_RESULTS_NN_PREDICTIONS_DICT = {
-    'NN_maxdiag_predictions-10': 'BB-BALD',
-    'NN_maxdet-p_predictions-10': 'BB-BatchBALD',
-    'NN_bait-f-p_predictions-10': 'BB-BAIT',
-    'NN_fw-p_predictions-10': 'BB-ACS-FW',
-    'NN_maxdist-p_predictions-10': 'BB-Core-Set / FF-Active',
-    'NN_kmeanspp-p_predictions-10': 'BB-BADGE',
-    'NN_lcmd-tp_predictions-10': 'BB-LCMD'
+    'NN_maxdiag_predictions-10': r'$\blacksquare$ BALD',
+    'NN_maxdet-p_predictions-10': r'$\blacksquare$ BatchBALD',
+    'NN_bait-f-p_predictions-10': r'$\blacksquare$ BAIT',
+    'NN_fw-p_predictions-10': r'$\blacksquare$ ACS-FW',
+    'NN_maxdist-p_predictions-10': r'$\blacksquare$ Core-Set/\\FF-Active',
+    'NN_kmeanspp-p_predictions-10': r'$\blacksquare$ BADGE',
+    'NN_lcmd-tp_predictions-10': r'$\blacksquare$ LCMD'
 }
 
 # Create a dictionary of LIT_RESULTS_VE_CAT_PREDICTIONS with the corresponding labels
 LIT_RESULTS_VE_CAT_PREDICTIONS_DICT = {
     "VE-CAT_random": "Uniform",
-    "VE-CAT_maxdiag_predictions-1": "BB-BALD",
-    "VE-CAT_fw-p_predictions-1": "BB-ACS-FW",
-    "VE-CAT_maxdet-p_predictions-1": "BB-BatchBALD",
-    "VE-CAT_maxdist-p_predictions-1": "BB-Core-Set / FF-Active",
-    "VE-CAT_lcmd-tp_predictions-1": "BB-LCMD",
-    "VE-CAT_kmeanspp-p_predictions-1": "BB-BADGE",
+    "VE-CAT_maxdiag_predictions-1": r"$\blacksquare$ BALD",
+    "VE-CAT_maxdet-p_predictions-1": r"$\blacksquare$ BatchBALD",
+    'VE-CAT_bait-f-p_predictions-1': r'$\blacksquare$ BAIT',
+    "VE-CAT_fw-p_predictions-1": r"$\blacksquare$ ACS-FW",
+    "VE-CAT_maxdist-p_predictions-1": r"$\blacksquare$ Core-Set/\\FF-Active",
+    "VE-CAT_kmeanspp-p_predictions-1": r"$\blacksquare$ BADGE",
+    "VE-CAT_lcmd-tp_predictions-1": r"$\blacksquare$ LCMD",
 }
 
 # Create a dictionary of LIT_RESULTS_VE_CAT_PREDICTIONS with the corresponding labels
 LIT_RESULTS_RF_PREDICTIONS_DICT = {
     "RF_random": "Uniform",
-    "RF_maxdiag_predictions-1": "BB-BALD",
-    "RF_fw-p_predictions-1": "BB-ACS-FW",
-    "RF_maxdet-p_predictions-1": "BB-BatchBALD",
-    "RF_maxdist-p_predictions-1": "BB-Core-Set / FF-Active",
-    "RF_lcmd-tp_predictions-1": "BB-LCMD",
-    "RF_kmeanspp-p_predictions-1": "BB-BADGE",
+    "RF_maxdiag_predictions-1": r"$\blacksquare$ BALD",
+    "RF_maxdet-p_predictions-1": r"$\blacksquare$ BatchBALD",
+    'RF_bait-f-p_predictions-1': r'$\blacksquare$ BAIT',
+    "RF_fw-p_predictions-1": r"$\blacksquare$ ACS-FW",
+    "RF_maxdist-p_predictions-1": r"$\blacksquare$ Core-Set/\\FF-Active",
+    "RF_kmeanspp-p_predictions-1": r"$\blacksquare$ BADGE",
+    "RF_lcmd-tp_predictions-1": r"$\blacksquare$ LCMD",
 }
-
 
 def plot_all(results: ExperimentResults, alg_names: List[str], with_batch_size_plots: bool = True,
              literature_results_dict: Dict[str, str] = LIT_RESULTS_NN_BMDAL_DICT):
@@ -65,7 +66,7 @@ def plot_all(results: ExperimentResults, alg_names: List[str], with_batch_size_p
                                use_last_error=True)
 
     print('Creating learning curve plots...')
-    plot_learning_curves_metrics_subplots(results=selected_results, filename='learning_curves_metrics.pdf')
+    plot_learning_curves_metrics_subplots(results=literature_results, filename='learning_curves_metrics.pdf', labels=literature_names)
     plot_multiple_learning_curves(results=selected_results, filename='learning_curves_rmse_maxe.pdf',
                                   metric_names=['rmse', 'maxe'])
     plot_multiple_learning_curves(results=selected_results, filename='learning_curves_q95_q99.pdf',
@@ -76,7 +77,7 @@ def plot_all(results: ExperimentResults, alg_names: List[str], with_batch_size_p
         plot_learning_curves(results=literature_results, filename=f'learning_curves_literature_{metric_name}.pdf',
                              metric_name=metric_name, labels=literature_names, figsize=(6, 5))
         plot_learning_curves(results=literature_results, filename=f'learning_curves_literature_wide_{metric_name}.pdf',
-                             metric_name=metric_name, figsize=(8, 3.5))
+                             metric_name=metric_name, labels=literature_names, figsize=(8, 3.5))
 
     print('Creating individual learning curve plots with subplots...')
     for metric_name in ['mae', 'rmse', 'q95', 'q99', 'maxe']:
@@ -168,5 +169,5 @@ if __name__ == '__main__':
         print('Finished plotting')
         print()
 
-    print('Creating lcmd visualization...')
-    create_lcmd_plots(n_train=1, n_pool=500, n_steps=20)
+    # print('Creating lcmd visualization...')
+    # create_lcmd_plots(n_train=1, n_pool=500, n_steps=20)

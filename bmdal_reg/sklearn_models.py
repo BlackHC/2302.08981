@@ -108,8 +108,8 @@ class CatBoostRegressor(SklearnModel):
                 result = np.asarray(self.model.virtual_ensembles_predict(x, virtual_ensembles_count=ensemble_count))
                 break
             except catboost.CatboostError as e:
-                if "Not enough trees in model for 10 virtual Ensembles" in str(e):
-                    ensemble_count /= 2
+                if "Not enough trees in model" in str(e):
+                    ensemble_count //= 2
                     assert ensemble_count > 1
                 else:
                     raise

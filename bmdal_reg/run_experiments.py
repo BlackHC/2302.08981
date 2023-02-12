@@ -87,18 +87,18 @@ def get_bmdal_sklearn_predictions_configs(*, prefix, mem_threshold=9e-6, bs_mem_
                                   base_kernel='predictions', kernel_transforms=[], **kwargs))
 
     # # bait kernel comparison
-    # for fb_mode, overselection_factor in [('f', 1.0), ('fb', 2.0)]:
+    for fb_mode, overselection_factor in [('f', 1.0), ('fb', 2.0)]:
     #     # lst.append(mem_threshold, ModelTrainer(f'{prefix}_bait-{fb_mode}-p_predictions-{n_models}_scale', selection_method='bait',
     #     #                               overselection_factor=overselection_factor, base_kernel='predictions',
     #     #                               sel_with_train=False,
     #     #                               n_models=n_models, kernel_transforms=[('scale', [None])],
     #     #                               **kwargs))
     #
-    #     lst.append(mem_threshold, ModelTrainer(f'{prefix}_bait-{fb_mode}-p_predictions-{n_models}', selection_method='bait',
-    #                                   overselection_factor=overselection_factor, base_kernel='predictions',
-    #                                   sel_with_train=False,
-    #                                   n_models=n_models, kernel_transforms=[],
-    #                                   **kwargs))
+        lst.append(mem_threshold, ModelTrainer(f'{prefix}_bait-{fb_mode}-p_predictions-{n_models}', selection_method='bait',
+                                      overselection_factor=overselection_factor, base_kernel='predictions',
+                                      sel_with_train=False,
+                                      n_models=n_models, kernel_transforms=[],
+                                      **kwargs))
 
     # lst.append(mem_threshold, ModelTrainer(f'{prefix}_maxdet-p_linear_train', selection_method='maxdet',
     #                                      base_kernel='linear', kernel_transforms=[('train', [sigma, None])],
@@ -698,7 +698,7 @@ def run_experiments(exp_name: str, n_splits: int, run_config_list: RunConfigList
         # run each split sequentially
         print(f'Running all configurations on split {max_split_id}')
         # run only one experiment per GPU on split sequential_split for timing experiments
-        do_timing = max_split_id == sequential_split
+        do_timing = False
         scheduler = JobScheduler(max_jobs_per_device=1 if do_timing else max_jobs_per_device, use_gpu=True)
         runner = JobRunner(scheduler=scheduler)
         for split_id in range(0, max_split_id+1):
@@ -727,8 +727,8 @@ def get_sklearn_configs() -> RunConfigList:
 
 def get_relu_configs() -> RunConfigList:
     lst_pred =get_bmdal_predictions_configs(weight_gain=0.2, bias_gain=0.2, post_sigma=1e-3, lr=0.375, act='relu')
-    lst_org = get_bmdal_configs( weight_gain=0.2, bias_gain=0.2, post_sigma=1e-3, lr=0.375, act='relu')
-    return lst_pred + lst_org
+    # lst_org = get_bmdal_configs( weight_gain=0.2, bias_gain=0.2, post_sigma=1e-3, lr=0.375, act='relu')
+    return lst_pred # + lst_org
 
 
 def get_silu_configs() -> RunConfigList:

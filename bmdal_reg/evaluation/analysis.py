@@ -234,9 +234,10 @@ def get_latex_selection_method(selection_method: str, is_black_box=False) -> str
     if len(parts) > 1:
         result += '-TP' if parts[-1] == 'tp' else '-P'
     if is_black_box:
-        result = 'BB ' + result
+        result = r'\textbf{BB ' + result + "}"
     else:
-        result = 'WB ' + result
+        if method_name != 'random':
+            result = 'WB ' + result
     # if method_name == 'lcmd':
     #     result += ' (ours)'
     return result

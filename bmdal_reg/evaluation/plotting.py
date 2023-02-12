@@ -52,6 +52,8 @@ def plot_batch_sizes_ax(ax: plt.Axes, results: ExperimentResults, metric_name: s
 
     plot_options = utils.update_dict(dict(alpha=1.0, markersize=3.5), plot_options)
 
+    random_name = find_random_name(results)
+
     for alg_name in results.alg_names:
         log_means = []
         alg_stds = []
@@ -80,7 +82,7 @@ def plot_batch_sizes_ax(ax: plt.Axes, results: ExperimentResults, metric_name: s
         if len(ds_batch_sizes) == 0:
             raise ValueError(f'No data set results available for alg {alg_name}')
 
-        if alg_name == 'NN_random':
+        if alg_name == random_name:
             # all batch sizes should provide equivalent results
             minus = np.mean(log_means) - np.linalg.norm(alg_stds) / len(alg_stds)
             plus = np.mean(log_means) + np.linalg.norm(alg_stds) / len(alg_stds)
@@ -227,6 +229,8 @@ def plot_learning_curves_ax(ax: plt.Axes, results: ExperimentResults, metric_nam
     pred_color_idx = 0
     color_idx = 0
 
+    random_name = find_random_name(results)
+
     for i, alg_name in enumerate(results.alg_names):
         log_means = [learning_curves.results_dict[alg_name][ds_name + '_256x16'] for ds_name in ds_names]
         results_list = np.mean(log_means, axis=0)
@@ -236,7 +240,7 @@ def plot_learning_curves_ax(ax: plt.Axes, results: ExperimentResults, metric_nam
 
         label = get_latex_selection_method(alg_name.split('_')[1], "predictions" in alg_name) if labels is None else labels[i]
 
-        if alg_name == 'NN_random':
+        if alg_name == random_name:
             ax.plot(np.log(n_train), results_list, '--o', color='k', label=label, **plot_options)
             if with_random_final:
                 ax.plot([np.log(n_train[0]), np.log(n_train[-1])], [results_list[-1], results_list[-1]],
@@ -377,14 +381,18 @@ def plot_correlation_between_methods(results: ExperimentResults, filename: Union
     ds_names = list({'_'.join(task_name.split('_')[:-1]) for task_name in results.task_names})
     ds_names.sort()
     task_names = [ds_name + '_256x16' for ds_name in ds_names]
-    alg_names = [alg_name for alg_name in results.alg_names if alg_name != 'NN_random']
+
+    # find the alg_name ending in '_random'
+    random_name = find_random_name(results)
+
+    alg_names = [alg_name for alg_name in results.alg_names if alg_name != random_name]
 
     fig, axs = plt.subplots(len(alg_names)-1, len(alg_names)-1, figsize=(7.8, 7.8), sharex='col', sharey='row')
 
     last_errors = results.get_avg_errors(metric_name)
 
     all_results = {alg_name: {task_name: np.mean(last_errors.results_dict[alg_name][task_name])
-                              for task_name in task_names} for alg_name in alg_names + ['NN_random']}
+                              for task_name in task_names} for alg_name in alg_names + [random_name]}
 
     max_result = 0.0
     min_result = 0.0
@@ -399,14 +407,16 @@ def plot_correlation_between_methods(results: ExperimentResults, filename: Union
 
     c = [rgb_to_hex(c) for c in c_list]
 
+    random_name = find_random_name(results)
+
     for i in range(len(alg_names)):
         for j in range(i+1, len(alg_names)):
             alg_name_i = alg_names[i]
             alg_name_j = alg_names[j]
             k = 0
             for task_name in task_names:
-                result_x = all_results[alg_name_i][task_name] - all_results['NN_random'][task_name]
-                result_y = all_results[alg_name_j][task_name] - all_results['NN_random'][task_name]
+                result_x = all_results[alg_name_i][task_name] - all_results[random_name][task_name]
+                result_y = all_results[alg_name_j][task_name] - all_results[random_name][task_name]
                 max_result = np.max([result_x, result_y, max_result])
                 min_result = np.min([result_x, result_y, min_result])
                 if i == 0 and j == 1:
@@ -443,6 +453,10 @@ def plot_correlation_between_methods(results: ExperimentResults, filename: Union
     plt.close(fig)
 
 
+def find_random_name(results):
+    return [alg_name for alg_name in results.alg_names if alg_name.endswith('_random')][0]
+
+
 def plot_skewness_ax(ax: plt.Axes, results: ExperimentResults, metric_name: str, alg_name: str,
                      use_relative_improvement: bool = False):
     sns.color_palette("Paired")
@@ -455,7 +469,7 @@ def plot_skewness_ax(ax: plt.Axes, results: ExperimentResults, metric_name: str,
     task_names.sort()
 
     avg_errors = results.get_avg_errors(metric_name)
-    random_name = 'NN_random'
+    random_name = find_random_name(results)
 
     all_results = {name: {task_name: np.mean(avg_errors.results_dict[name][task_name])
                               for task_name in task_names} for name in [alg_name, random_name]}
@@ -566,7 +580,9 @@ def plot_learning_curves_v2(results: ExperimentResults, filename: Union[str, Pat
     ds_names = list({'_'.join(task_name.split('_')[:-1]) for task_name in all_task_names})
     algs_with_all_tasks = [alg_name for alg_name in all_alg_names
                            if set(results.results_dict[alg_name].keys()) == all_task_names]
-    alg_names = algs_with_all_tasks + ['NN_lcmd-tp_ll', 'NN_kmeanspp-tp_ll', 'NN_maxdist-tp_grad_rp-512', 'NN_random']
+
+    random_name = find_random_name(results)
+    alg_names = algs_with_all_tasks + ['NN_lcmd-tp_ll', 'NN_kmeanspp-tp_ll', 'NN_maxdist-tp_grad_rp-512', random_name]
 
     fig, axs = plt.subplots(figsize=(5, 5))
     plt.xscale('log')
@@ -577,8 +593,9 @@ def plot_learning_curves_v2(results: ExperimentResults, filename: Union[str, Pat
     alg_results = {alg_name: np.mean([learning_curves.results_dict[alg_name][ds_name + '_256x16']
                             for ds_name in ds_names], axis=0) for alg_name in alg_names}
 
+    random_name = find_random_name(results)
     for alg_name in alg_names:
-        axs.plot(n_train, alg_results[alg_name] - alg_results['NN_random'], '--o', label=escape(alg_name))
+        axs.plot(n_train, alg_results[alg_name] - alg_results[random_name], '--o', label=escape(alg_name))
 
     axs.legend()
     plt.tight_layout()
@@ -591,7 +608,8 @@ def plot_learning_curves_v2(results: ExperimentResults, filename: Union[str, Pat
 def alt_plot_eff_dim(results: ExperimentResults, filename: Union[str, Path], pattern: str, metric_name: str):
     # plots, for every data set, error of grad_rp-512 to ll vs difference in effective dimensions (average),
     # for different selection methods (esp. maxdist, maxdet, lcmd, fw),
-    all_alg_names = [pattern.replace('*', 'll'), pattern.replace('*', 'grad_rp-512'), 'NN_random']
+    random_name = find_random_name(results)
+    all_alg_names = [pattern.replace('*', 'll'), pattern.replace('*', 'grad_rp-512'), random_name]
     all_task_names = {task_name for alg_name in all_alg_names for task_name in results.results_dict[alg_name].keys()}
 
     eff_dims = results.get_avg_al_stats('eff_dim')

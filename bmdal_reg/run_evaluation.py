@@ -1,27 +1,60 @@
 import sys
+import traceback
+
 from bmdal_reg.evaluation.plotting import *
 from bmdal_reg.evaluation.visualize_lcmd import create_lcmd_plots
 
+# Create a dictionary of LIT_RESULTS_NN_BMDAL with the corresponding labels from LIT_RESULTS_LABELS
+LIT_RESULTS_NN_BMDAL_DICT = {
+    'NN_random': 'Uniform',
+    'NN_maxdiag_ll_train': 'WB-BALD',
+    'NN_maxdet-p_ll_train': 'WB-BatchBALD',
+    'NN_bait-fb-p_ll_train': 'WB-BAIT',
+    'NN_fw-p_ll_acs-rf-hyper-512': 'WB-ACS-FW',
+    'NN_maxdist-tp_ll': 'WB-Core-Set / FF-Active',
+    'NN_kmeanspp-p_ll_train': 'WB-BADGE',
+    'NN_lcmd-tp_grad_rp-512': 'WB-LCMD'
+}
 
-def plot_all(results: ExperimentResults, alg_names: List[str], with_batch_size_plots: bool = True):
+# Create a dictionary of LIT_RESULTS_NN_PREDICTIONS with the corresponding labels from LIT_RESULTS_NN_PREDICTIONS_LABELS
+LIT_RESULTS_NN_PREDICTIONS_DICT = {
+    'NN_maxdiag_predictions-10': 'BB-BALD',
+    'NN_maxdet-p_predictions-10': 'BB-BatchBALD',
+    'NN_bait-f-p_predictions-10': 'BB-BAIT',
+    'NN_fw-p_predictions-10': 'BB-ACS-FW',
+    'NN_maxdist-p_predictions-10': 'BB-Core-Set / FF-Active',
+    'NN_kmeanspp-p_predictions-10': 'BB-BADGE',
+    'NN_lcmd-tp_predictions-10': 'BB-LCMD'
+}
+
+# Create a dictionary of LIT_RESULTS_VE_CAT_PREDICTIONS with the corresponding labels
+LIT_RESULTS_VE_CAT_PREDICTIONS_DICT = {
+    "VE-CAT_random": "Uniform",
+    "VE-CAT_maxdiag_predictions-1": "BB-BALD",
+    "VE-CAT_fw-p_predictions-1": "BB-ACS-FW",
+    "VE-CAT_maxdet-p_predictions-1": "BB-BatchBALD",
+    "VE-CAT_maxdist-p_predictions-1": "BB-Core-Set / FF-Active",
+    "VE-CAT_lcmd-tp_predictions-1": "BB-LCMD",
+    "VE-CAT_kmeanspp-p_predictions-1": "BB-BADGE",
+}
+
+# Create a dictionary of LIT_RESULTS_VE_CAT_PREDICTIONS with the corresponding labels
+LIT_RESULTS_RF_PREDICTIONS_DICT = {
+    "RF_random": "Uniform",
+    "RF_maxdiag_predictions-1": "BB-BALD",
+    "RF_fw-p_predictions-1": "BB-ACS-FW",
+    "RF_maxdet-p_predictions-1": "BB-BatchBALD",
+    "RF_maxdist-p_predictions-1": "BB-Core-Set / FF-Active",
+    "RF_lcmd-tp_predictions-1": "BB-LCMD",
+    "RF_kmeanspp-p_predictions-1": "BB-BADGE",
+}
+
+
+def plot_all(results: ExperimentResults, alg_names: List[str], with_batch_size_plots: bool = True,
+             literature_results_dict: Dict[str, str] = LIT_RESULTS_NN_BMDAL_DICT):
     selected_results = results.filter_alg_names(alg_names)
-    literature_results = results.filter_alg_names(['NN_random', 'NN_maxdiag_ll_train', 'NN_maxdet-p_ll_train',
-                                                   'NN_bait-fb-p_ll_train',
-                                                   'NN_fw-p_ll_acs-rf-hyper-512', 'NN_maxdist-tp_ll',
-                                                   'NN_kmeanspp-p_ll_train', 'NN_lcmd-tp_grad_rp-512'] +
-                                                  ['NN_maxdiag_predictions-10', 'NN_maxdet-p_predictions-10',
-                                                   'NN_bait-f-p_predictions-10',
-                                                   'NN_fw-p_predictions-10', 'NN_maxdist-tp_predictions-10',
-                                                   'NN_kmeanspp-p_predictions-10', 'NN_lcmd-tp_predictions-10']
-                                                  +[
-        "RF_random", "RF_maxdist-p_predictions-1", "RF_lcmd-p_predictions-1", "RF_maxdet-p_predictions-1",
-        "RF_maxdist-tp_predictions-1", "CAT_maxdet-p_predictions-1", "RF_kmeanspp-tp_predictions-1",
-        "RF_lcmd-tp_predictions-1", "RF_kmeanspp-p_predictions-1", "RF_maxdiag_predictions-1", "RF_fw-p_predictions-1"
-    ])
-    literature_names = ['Uniform', 'WB-BALD', 'WB-BatchBALD', 'WB-BAIT', 'WB-ACS-FW', 'WB-Core-Set / FF-Active',
-                        'WB-BADGE', 'WB-LCMD',
-                        'BB-BALD', 'BB-BatchBALD', 'BB-BAIT', 'BB-ACS-FW', 'BB-Core-Set / FF-Active', 'BB-BADGE',
-                        'BB-LCMD']
+    literature_results = results.filter_alg_names(list(literature_results_dict.keys()))
+    literature_names = list(literature_results_dict.values())
 
     print('Generating tables...')
     save_latex_table_all_algs(results, 'table_all_algs.txt')
@@ -50,10 +83,12 @@ def plot_all(results: ExperimentResults, alg_names: List[str], with_batch_size_p
         plot_learning_curves_individual_subplots(results=selected_results,
                                                  filename=f'learning_curves_individual_{metric_name}.pdf',
                                                  metric_name=metric_name)
-    print('Creating error variation plots...')
-    plot_error_variation(results, 'skewness_ri_lcmd-tp_grad_rp-512.pdf', metric_name='rmse',
-                         alg_name='NN_lcmd-tp_grad_rp-512',
-                         use_relative_improvement=True)
+    # TODO error variation plots disabled for now
+    if False:
+        print('Creating error variation plots...')
+        plot_error_variation(results, 'skewness_ri_lcmd-tp_grad_rp-512.pdf', metric_name='rmse',
+                             alg_name='NN_lcmd-tp_grad_rp-512',
+                             use_relative_improvement=True)
 
     print('Creating correlation plots...')
     for metric_name in metric_names:
@@ -93,7 +128,7 @@ if __name__ == '__main__':
         exp_names = [sys.argv[1]]
     else:
         available_names = utils.getSubfolderNames(custom_paths.get_results_path())
-        exp_names = [name for name in available_names if name in ['relu', 'silu']]
+        exp_names = [name for name in available_names if name in ['sklearn', 'relu']]
 
     for exp_name in exp_names:
         print(f'----- Running evaluation for {exp_name} experiments -----')
@@ -107,36 +142,28 @@ if __name__ == '__main__':
         results.analyze_eff_dims()
 
         if exp_name == 'sklearn':
-            # selected algs for ReLU (best ones in terms of RMSE after ignoring slow ones, see table in the paper)
-            alg_names_sklearn = ["RF_random", "RF_maxdist-p_predictions-1", "RF_lcmd-p_predictions-1", "RF_maxdet-p_predictions-1",
-                              "RF_maxdist-tp_predictions-1",
-                              "RF_kmeanspp-tp_predictions-1", "RF_lcmd-tp_predictions-1", "RF_kmeanspp-p_predictions-1",
-                              "RF_maxdiag_predictions-1", "RF_fw-p_predictions-1"]
-            plot_all(results, alg_names=alg_names_sklearn)
+            try:
+                # filter results to only contain algs with RF_ as prefix
+                rf_results = results.filter_alg_names(list(filter(lambda alg_name: alg_name.startswith('RF_'), results.alg_names)))
+                # selected algs for ReLU (best ones in terms of RMSE after ignoring slow ones, see table in the paper)
+                alg_names_sklearn = list(LIT_RESULTS_RF_PREDICTIONS_DICT.keys())
+                plot_all(rf_results, alg_names=alg_names_sklearn, literature_results_dict=LIT_RESULTS_RF_PREDICTIONS_DICT, with_batch_size_plots=False)
+            except:
+                traceback.print_exc()
 
+            try:
+                # filter results to only contain algs with VE-CAT_ as prefix
+                rf_results = results.filter_alg_names(list(filter(lambda alg_name: alg_name.startswith('VE-CAT_'), results.alg_names)))
+                rf_results.exp_name = 'sklearn-ve-cat'
+                alg_names_sklearn = list(LIT_RESULTS_VE_CAT_PREDICTIONS_DICT.keys())
+                plot_all(rf_results, alg_names=alg_names_sklearn, literature_results_dict=LIT_RESULTS_VE_CAT_PREDICTIONS_DICT, with_batch_size_plots=False)
+            except:
+                traceback.print_exc()
         if exp_name == 'relu':
             # selected algs for ReLU (best ones in terms of RMSE after ignoring slow ones, see table in the paper)
-            alg_names_relu = ['NN_random', 'NN_maxdiag_grad_rp-512_acs-rf-512', 'NN_maxdet-p_grad_rp-512_train',
-                              'NN_bait-f-p_grad_rp-512_train',
-                              'NN_fw-p_grad_rp-512_acs-rf-hyper-512', 'NN_maxdist-p_grad_rp-512_train',
-                              'NN_kmeanspp-p_grad_rp-512_acs-rf-512',
-                              'NN_lcmd-tp_grad_rp-512'] + ['NN_maxdiag_predictions-10', 'NN_maxdet-p_predictions-10',
-                                                           'NN_bait-f-p_predictions-10',
-                                                           'NN_fw-p_predictions-10', 'NN_maxdist-tp_predictions-10',
-                                                           'NN_kmeanspp-p_predictions-10', 'NN_lcmd-tp_predictions-10']
-            plot_all(results, alg_names=alg_names_relu)
-        elif exp_name == 'silu':
-            # selected algs for SiLU
-            alg_names_silu = ['NN_random', 'NN_maxdiag_grad_rp-512_train', 'NN_maxdet-p_grad_rp-512_train',
-                              'NN_bait-f-p_grad_rp-512_train',
-                              'NN_fw-p_grad_rp-512_acs-rf-hyper-512', 'NN_maxdist-tp_grad_rp-512',
-                              'NN_kmeanspp-tp_grad_rp-512',
-                              'NN_lcmd-tp_grad_rp-512'] + ['NN_maxdiag_predictions-10', 'NN_maxdet-p_predictions-10',
-                                                           'NN_bait-f-p_predictions-10',
-                                                           'NN_fw-p_predictions-10', 'NN_maxdist-tp_predictions-10',
-                                                           'NN_kmeanspp-p_predictions-10', 'NN_lcmd-tp_predictions-10']
+            alg_names_relu = list(LIT_RESULTS_NN_BMDAL_DICT.keys()) + list(LIT_RESULTS_NN_PREDICTIONS_DICT.keys())
+            plot_all(results, alg_names=alg_names_relu, with_batch_size_plots=False, literature_results_dict=LIT_RESULTS_NN_BMDAL_DICT | LIT_RESULTS_NN_PREDICTIONS_DICT)
 
-            plot_all(results, alg_names=alg_names_silu, with_batch_size_plots=False)
 
         print('Finished plotting')
         print()

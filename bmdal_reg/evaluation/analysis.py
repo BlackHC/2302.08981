@@ -68,17 +68,7 @@ class ExperimentResults:
         """
         Get average (log) errors over all white box or black box methods across all tasks.
         """
-        # We ignore the random baseline here.
-        random_name = self.find_random_name()
-        if white_box:
-            # whitebox names do not include "predictions" in the name
-            alg_names = [alg_name for alg_name in self.alg_names if 'predictions' not in alg_name and alg_name != random_name]
-        else:
-            # blackbox names include "predictions" in the name
-            alg_names = [alg_name for alg_name in self.alg_names if 'predictions' in alg_name and alg_name != random_name]
-
-        # filter by alg_names
-        filtered_results = self.filter_alg_names(alg_names)
+        filtered_results = self.filter_whitebox_algs() if white_box else self.filter_blackbox_algs()
 
         # iterate over all tasks and alg_names in filtered_results
         # and compute the average log error for each split separately
@@ -92,6 +82,20 @@ class ExperimentResults:
                             for task_results in filtered_results.results_dict.values()
                             for task_name, split_results in task_results.items() if int(task_name.split('_')[-1].split('x')[0]) == 256
                             ], axis=0)
+
+    def get_blackbox_alg_names(self):
+        random_name = self.find_random_name()
+        return [alg_name for alg_name in self.alg_names if 'predictions' in alg_name and alg_name != random_name]
+
+    def get_whitebox_alg_names(self):
+        random_name = self.find_random_name()
+        return [alg_name for alg_name in self.alg_names if 'predictions' not in alg_name and alg_name != random_name]
+
+    def filter_whitebox_algs(self):
+        return self.filter_alg_names(self.get_whitebox_alg_names())
+
+    def filter_blackbox_algs(self):
+        return self.filter_alg_names(self.get_blackbox_alg_names())
 
     def select_split(self, i: int) -> 'ExperimentResults':
         for alg_name, task_results in self.results_dict.items():
@@ -176,8 +180,9 @@ class ExperimentResults:
         pkl_filename = Path(custom_paths.get_cache_path()) / exp_name / 'results.pkl'
         results = None
         # first try to load from cached pkl file
-        if utils.existsFile(pkl_filename) \
-            and os.path.getmtime(pkl_filename) >= utils.last_mod_time_recursive(str(results_path)):
+        if utils.existsFile(pkl_filename):
+        #if utils.existsFile(pkl_filename) \
+        #    and os.path.getmtime(pkl_filename) >= utils.last_mod_time_recursive(str(results_path)):
             try:
                 results = utils.deserialize(pkl_filename)
             except Exception as e:
@@ -253,6 +258,11 @@ def get_latex_task(task: str) -> str:
     return conversion_dict[task]
 
 
+def get_latex_literature_name_new(alg_name: str, incl_box: bool=True) -> str:
+    selection_method = alg_name.split('_')[1]
+    return get_latex_literature_name(selection_method, "predictions" in alg_name, incl_box)
+
+
 def get_latex_literature_name(selection_method: str, is_black_box: bool=False, incl_box: bool=True) -> str:
     conversion_dict = {'random': r'{Uniform}',
                        'fw': r'{ACS-FW}',
@@ -300,6 +310,10 @@ def get_color_index(selection_method: str) -> int:
     method_name = '-'.join(parts[:-1]) if len(parts) > 1 else selection_method
     index = conversion_dict[method_name]
     return index
+
+
+def get_latex_selection_method_new(alg_name) -> str:
+    return get_latex_selection_method(alg_name.split('_')[1], "predictions" in alg_name)
 
 
 def get_latex_selection_method(selection_method: str, is_black_box=False) -> str:

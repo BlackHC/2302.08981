@@ -343,6 +343,7 @@ def plot_learning_curves_ax_ci(ax: plt.Axes, results: ExperimentResults, metric_
 def flip(items, ncol):
     return itertools.chain(*[items[i::ncol] for i in range(ncol)])
 
+
 def plot_learning_curves(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str,
                          figsize: typing.Optional[typing.Tuple[float, float]] = None):
     # plot averaged learning curve for all tasks
@@ -487,6 +488,111 @@ def plot_learning_curves_metrics_subplots(results: ExperimentResults, filename: 
     plt.close(fig)
 
 
+def plot_correlation_between_methods_wb_vs_bb(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str):
+    # plot mean final log metric against the al batch size
+    ds_names = list({'_'.join(task_name.split('_')[:-1]) for task_name in results.task_names})
+    ds_names.sort()
+    task_names = [ds_name + '_256x16' for ds_name in ds_names]
+
+    # find the alg_name ending in '_random'
+    random_name = find_random_name(results)
+
+    bb_alg_names = results.get_blackbox_alg_names()
+    wb_alg_names = results.get_whitebox_alg_names()
+
+    labels = {alg_name:
+                  get_latex_literature_name_new(alg_name, incl_box=False)
+              for alg_name in bb_alg_names+wb_alg_names}
+
+    # find a mapping from wb alg names to bb alg names
+    mapping_wb_alg_to_bx_alg = {}
+    for wb_alg_name in wb_alg_names:
+        for bb_alg_name in bb_alg_names:
+            if labels[wb_alg_name] == labels[bb_alg_name]:
+                mapping_wb_alg_to_bx_alg[wb_alg_name] = bb_alg_name
+
+    fig, axs = plt.subplots(1, len(wb_alg_names),
+                            figsize=(7.8+1, 7.8/len(wb_alg_names)/1.65+1), sharex='all', sharey='all',
+                            gridspec_kw=dict(left=0.1, right=1, bottom=0.2, top=0.9, wspace=0.1, hspace=0.1))
+
+    last_errors = results.get_avg_errors(metric_name)
+
+    all_results = {alg_name: {task_name: np.mean(last_errors.results_dict[alg_name][task_name])
+                              for task_name in task_names} for alg_name in results.alg_names}
+
+    max_result = 0.0
+    min_result = 0.0
+    alpha = 0.7
+    markersize = 6
+
+    # generated using https://github.com/taketwo/glasbey
+    # c_list = [(0,0,0), (215,0,0), (140,60,255), (2,136,0), (0,172,199), (152,255,0), (255,127,209), (108,0,79), (255,165,48),
+    #      (0,0,157), (134,112,104), (0,73,66), (79,42,0), (0,253,207), (188,183,255)]
+    #c_list = [(174,20,20), (0,85,239), (0,143,0), (239,91,255), (225,149,10), (0,184,196), (120,78,120), (255,110,128),
+    #          (114,90,36), (148,155,255), (19,109,100), (145,180,125), (148,55,252), (202,16,130), (97,122,157)]
+    # c = [rgb_to_hex(c) for c in c_list]
+
+    c =["#000000", "#004949", "#009292", "#ff6db6", "#ffb6db",
+    "#490092", "#006ddb", "#b66dff", "#6db6ff", "#b6dbff",
+    "#920000", "#924900", "#db6d00", "#24ff24", "#ffff6d"]
+    #c = sns.color_palette("colorblind", len(ds_names))
+    for i, wb_alg_name in enumerate(wb_alg_names):
+        bb_alg_name = mapping_wb_alg_to_bx_alg[wb_alg_name]
+        k = 0
+        for task_name in task_names:
+            result_x = all_results[random_name][task_name] - all_results[wb_alg_name][task_name]
+            result_y = all_results[random_name][task_name] - all_results[bb_alg_name][task_name]
+            max_result = np.max([result_x, result_y, max_result])
+            min_result = np.min([result_x, result_y, min_result])
+
+            axs[i].plot(result_x, result_y, 'o', alpha=alpha,
+                               label=get_latex_task(task_name.split('_256')[0]), markersize=markersize,
+                               color=c[k], markeredgewidth=0.0)
+            k += 1
+
+            #axs[i].set_ylabel(label_names_i[i], **axis_font)
+            #axs[i].set_xlabel(label_names_j[mapping[i]], **axis_font)
+            axs[i].set_xlabel(labels[wb_alg_name], **axis_font)
+
+    for i in range(len(wb_alg_names)):
+        axs[i].plot([min_result, max_result], [min_result, max_result], 'k-')
+        axs[i].plot([min_result, max_result], [0.0, 0.0], 'k--')
+        axs[i].plot([0.0, 0.0], [min_result, max_result*1.1], 'k--')
+
+        # Shade y > x in gray
+        axs[i].fill_between([min_result - 5, max_result + 5], [min_result - 5, max_result + 5],
+                            [max_result + 5, max_result + 5], color='gray', alpha=0.2)
+
+        # Set limits according to data
+        axs[i].set_xlim(min_result-0.05, max_result+0.05)
+        axs[i].set_ylim(min_result-0.05, max_result+0.05)
+
+        # Put a little \blacksquare in the upper left corner with top left alignment
+        axs[i].text(min_result, max_result, r'$\blacksquare$', ha='left', va='top', fontsize=12, color='k', alpha=1)
+        axs[i].text(max_result, min_result, r'$\square$', ha='right', va='bottom', fontsize=12, color='k', alpha=1)
+
+    # clear legend
+    for i in range(len(wb_alg_names)):
+        axs[i].legend().set_visible(False)
+
+    handles, labels = axs[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='lower center', fontsize=fontsize, ncol=len(task_names) // 3,
+               bbox_to_anchor=(0.5, 1), bbox_transform=fig.transFigure)
+
+    fig.supxlabel(r'$\square$ vs Uniform ($\uparrow$)', va="top", y=-.1, **axis_font)
+    fig.supylabel(r'$\blacksquare$ vs Uniform ($\uparrow$)', **axis_font)
+
+    # for i in range(len(alg_names_i)-1):
+    #      axs[i].axis('off')
+
+    plt.subplots_adjust(wspace=0.05, hspace=0.05)
+    plt.tight_layout()
+    plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
+    utils.ensureDir(plot_name)
+    plt.savefig(plot_name, bbox_inches="tight")
+    plt.close(fig)
+
+
 def plot_correlation_between_methods(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str):
     sns.color_palette("Paired")
 
@@ -515,12 +621,14 @@ def plot_correlation_between_methods(results: ExperimentResults, filename: typin
     # generated using https://github.com/taketwo/glasbey
     # c_list = [(0,0,0), (215,0,0), (140,60,255), (2,136,0), (0,172,199), (152,255,0), (255,127,209), (108,0,79), (255,165,48),
     #      (0,0,157), (134,112,104), (0,73,66), (79,42,0), (0,253,207), (188,183,255)]
-    c_list = [(174,20,20), (0,85,239), (0,143,0), (239,91,255), (225,149,10), (0,184,196), (120,78,120), (255,110,128),
-              (114,90,36), (148,155,255), (19,109,100), (145,180,125), (148,55,252), (202,16,130), (97,122,157)]
+    #c_list = [(174,20,20), (0,85,239), (0,143,0), (239,91,255), (225,149,10), (0,184,196), (120,78,120), (255,110,128),
+    #          (114,90,36), (148,155,255), (19,109,100), (145,180,125), (148,55,252), (202,16,130), (97,122,157)]
 
-    c = [rgb_to_hex(c) for c in c_list]
+    #c = [rgb_to_hex(c) for c in c_list]
 
-    random_name = find_random_name(results)
+    c = ["#000000", "#004949", "#009292", "#ff6db6", "#ffb6db",
+    "#490092", "#006ddb", "#b66dff", "#6db6ff", "#b6dbff",
+    "#920000", "#924900", "#db6d00", "#24ff24", "#ffff6d"]
 
     for i in range(len(alg_names)):
         for j in range(i+1, len(alg_names)):

@@ -94,8 +94,8 @@ def plot_all(results: ExperimentResults, alg_names: typing.List[str], with_batch
 
     print('Creating correlation plots...')
     for metric_name in metric_names:
-        plot_correlation_between_methods(results=selected_results,
-                                         filename=f'correlation_between_methods_{metric_name}.pdf',
+        plot_correlation_between_methods_wb_vs_bb(results=selected_results,
+                                         filename=f'correlation_between_bb_vs_wb_methods_{metric_name}.pdf',
                                          metric_name=metric_name)
     print('Creating individual learning curve plots...')
     for metric_name in ['mae', 'rmse', 'q95', 'q99', 'maxe']:

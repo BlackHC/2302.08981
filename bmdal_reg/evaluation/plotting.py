@@ -247,30 +247,25 @@ def plot_learning_curves_ax(ax: plt.Axes, results: ExperimentResults, metric_nam
             ax.plot(np.log(n_train), results_list, '--o', color='k', **plot_options)
             if with_random_final:
                 ax.plot([np.log(n_train[0]), np.log(n_train[-1])], [results_list[-1], results_list[-1]],
-                        '--', color='k', linewidth=0.5, **plot_options)
+                        '--', color='k', linewidth=1, zorder=1, **plot_options)
         else:
             color_idx = colors[get_color_index(alg_name.split('_')[1])]
             if "predictions" in alg_name:
                 # ax.plot(np.log(n_train), results_list, '-', marker=markers[pred_color_idx], color=colors[pred_color_idx],
-                ax.plot(np.log(n_train), results_list, '-', color=color_idx,
-                        **plot_options)
+                ax.plot(np.log(n_train), results_list, '-', color=color_idx, **plot_options)
             else:
                 # ax.plot(np.log(n_train), results_list, '--', marker=markers[color_idx], color=colors[color_idx],
                 ax.plot(np.log(n_train), results_list, '--', color=color_idx, linewidth=1., **plot_options)
 
-    # Plot white box average:
-    wb_learning_curve = np.mean(results.get_learning_curves_by_box(metric_name, white_box=True), axis=0)
-    n_train = np.asarray([256 * (i + 1) for i in range(len(wb_learning_curve))])
-    ax.plot(np.log(n_train), wb_learning_curve, '--s', color='gray', linewidth=3., **plot_options)
-
-    # Plot black box average:
-    bb_learning_curve = np.mean(results.get_learning_curves_by_box(metric_name, white_box=False), axis=0)
-    n_train = np.asarray([256 * (i + 1) for i in range(len(bb_learning_curve))])
-    ax.plot(np.log(n_train), bb_learning_curve, '-s', color='k', linewidth=3., **plot_options)
-
-    if with_random_final:
-        ax.plot([np.log(n_train[0]), np.log(n_train[-1])], [results_list[-1], results_list[-1]],
-                '--', color='k', linewidth=0.5, **plot_options)
+    # # Plot white box average:
+    # wb_learning_curve = np.mean(results.get_learning_curves_by_box(metric_name, white_box=True), axis=0)
+    # n_train = np.asarray([256 * (i + 1) for i in range(len(wb_learning_curve))])
+    # ax.plot(np.log(n_train), wb_learning_curve, '--s', color='gray', linewidth=3., **plot_options)
+    #
+    # # Plot black box average:
+    # bb_learning_curve = np.mean(results.get_learning_curves_by_box(metric_name, white_box=False), axis=0)
+    # n_train = np.asarray([256 * (i + 1) for i in range(len(bb_learning_curve))])
+    # ax.plot(np.log(n_train), bb_learning_curve, '-s', color='k', linewidth=3., **plot_options)
 
     if set_ticks_and_labels:
         xlocs = (np.log(256), np.log(512), np.log(1024), np.log(2048), np.log(4096))
@@ -349,10 +344,19 @@ def plot_learning_curves(results: ExperimentResults, filename: typing.Union[str,
     # plot averaged learning curve for all tasks
     fig, axs = plt.subplots(figsize=figsize or (3.5, 3.5))
 
+    plot_learning_curves_ax(axs, results=results, metric_name=metric_name)
+    add_axis_or_figure_legend(axs, results, ncol=2, loc='lower left')
+
+    plt.tight_layout()
+    plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
+    utils.ensureDir(plot_name)
+    plt.savefig(plot_name)
+    plt.close(fig)
+
+
+def add_axis_or_figure_legend(axis_or_fig, results, ncol, **legend_kwargs):
     random_name = find_random_name(results)
     incl_box = random_name != 'NN_random'
-
-    plot_learning_curves_ax(axs, results=results, metric_name=metric_name)
 
     # Build custom legend
     # We want to separate by color and by line style. The color is determined by whether the alg_name.
@@ -360,40 +364,37 @@ def plot_learning_curves(results: ExperimentResults, filename: typing.Union[str,
     # List of handles
     handles = []
     # add transparent patch
+    placeholder_patch = Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label='')
     handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label='Acq. Function'))
-    all_labels = {get_latex_literature_name(alg_name.split('_')[1], "predictions" in alg_name, incl_box) for alg_name in results.alg_names}
+    all_labels = {get_latex_literature_name(alg_name.split('_')[1], "predictions" in alg_name, incl_box) for alg_name in
+                  results.alg_names}
     labels = set()
+    # labels per column: round up from all_labels / n_col
+    n_per_col = int(np.ceil(len(all_labels) / ncol))
     for i, alg_name in enumerate(results.alg_names):
         label = get_latex_literature_name(alg_name.split('_')[1], "predictions" in alg_name, incl_box)
         if label in labels:
             continue
-        if i % (len(all_labels)//2) == 0 and i != 0:
-            handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label=''))
+        if i % n_per_col == 0 and i != 0:
+            handles.append(placeholder_patch)
         labels.add(label)
 
         color = 'k' if alg_name == random_name else colors[get_color_index(alg_name.split('_')[1])]
         handle = Line2D([0], [0], color=color, linestyle='-', label=label)
         handles.append(handle)
 
+    for i in range((n_per_col - len(labels) % n_per_col) % n_per_col):
+        handles.append(placeholder_patch)
+
     if not incl_box:
-        if len(labels) % 2 != 0:
-            handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label=''))
         handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label='Method'))
         handles.append(Line2D([0], [0], color='k', linestyle='-', label=r'\textbf{Black Box}'))
         handles.append(Line2D([0], [0], color='k', linestyle='--', label=r'White Box'))
-        # TODO: replace with for loop
-        handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label=''))
-        #handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label=''))
-
-    l = axs.legend(handles=handles, ncol=2 if incl_box else 3, loc='lower left')
+        for i in range(n_per_col - 2):
+            handles.append(placeholder_patch)
+    l = axis_or_fig.legend(handles=handles, ncol=ncol if incl_box else ncol+1, **legend_kwargs)
     # Left align legend texts
     plt.setp(l.get_texts(), multialignment='left')
-
-    plt.tight_layout()
-    plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
-    utils.ensureDir(plot_name)
-    plt.savefig(plot_name)
-    plt.close(fig)
 
 
 def plot_multiple_learning_curves(results: ExperimentResults, filename: typing.Union[str, Path],
@@ -404,9 +405,8 @@ def plot_multiple_learning_curves(results: ExperimentResults, filename: typing.U
     for i, metric_name in enumerate(metric_names):
         plot_learning_curves_ax(axs[i], results, metric_name=metric_name)
 
-    #fig.legend(*axs[0].get_legend_handles_labels(), loc='upper center', bbox_to_anchor=(0.5, 0.15), ncol=4)
-    fig.legend(*axs[0].get_legend_handles_labels(), ncol=4, loc='lower center')
-    plt.tight_layout(rect=[0, 0.15, 1.0, 1.0])
+    add_axis_or_figure_legend(fig, results, ncol=4, loc='lower center')
+    plt.tight_layout(rect=[0, 0.2, 1.0, 1.0])
     plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
     utils.ensureDir(plot_name)
     plt.savefig(plot_name)
@@ -435,7 +435,7 @@ def plot_learning_curves_individual_subplots(results: ExperimentResults, filenam
     ds_names = list({'_'.join(task_name.split('_')[:-1]) for task_name in results.task_names})
     ds_names.sort()
 
-    fig, axs = plt.subplots(5, 3, figsize=(9, 12))
+    fig, axs = plt.subplots(5, 3, figsize=(9, 14))
 
     if len(ds_names) != 15:
         print(f'plot_batch_sizes_individual_subplots needs 15 data sets, but got {len(ds_names)} data sets')
@@ -460,8 +460,9 @@ def plot_learning_curves_individual_subplots(results: ExperimentResults, filenam
             ax.set_ylabel(f'mean log {get_latex_metric_name(metric_name)}', **axis_font)
         ax.set_title(get_latex_ds_name(ds_name))
 
-    fig.legend(*axs[4, 1].get_legend_handles_labels(), loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=4)
-    plt.tight_layout(rect=[0, 0.05, 1.0, 1.0])
+
+    add_axis_or_figure_legend(fig, results, loc='upper center', bbox_to_anchor=(0.5, 0.08), ncol=3)
+    plt.tight_layout(rect=[0, 0.08, 1.0, 1.0])
 
     plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
     utils.ensureDir(plot_name)
@@ -480,7 +481,7 @@ def plot_learning_curves_metrics_subplots(results: ExperimentResults, filename: 
         plot_learning_curves_ax(ax, results, metric_name)
 
     axs[-1, -1].axis('off')
-    fig.legend(*axs[0, 0].get_legend_handles_labels(), loc='center', bbox_to_anchor=(0.78, 0.18), ncol=2)
+    add_axis_or_figure_legend(fig, results, labels=labels, ncol=1, loc='center', bbox_to_anchor=(0.78, 0.18))
     plt.tight_layout()
     plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
     utils.ensureDir(plot_name)

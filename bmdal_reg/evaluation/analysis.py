@@ -1,5 +1,5 @@
 import numpy as np
-from typing import *
+import typing
 from pathlib import Path
 import os
 
@@ -16,7 +16,7 @@ class ExperimentResults:
         self.task_names = list(set.union(*[set(alg_results.keys()) for alg_results in self.results_dict.values()]))
         self.task_names.sort()
 
-    def map_single_split(self, f: Callable):
+    def map_single_split(self, f: typing.Callable):
         # can be used e.g. to compute average log metric results
         return ExperimentResults({alg_name: {task_name: [f(split) for split in split_results]
                                              for task_name, split_results in task_results.items()}
@@ -61,6 +61,38 @@ class ExperimentResults:
             lambda split_dict: np.mean([sr['kernel_time']['total'] + sr['selection_time']['total']
                                         for sr in split_dict['al_stats']]))
 
+    def find_random_name(self):
+        return [alg_name for alg_name in self.alg_names if alg_name.endswith('_random')][0]
+
+    def get_learning_curves_by_box(self, key: str, white_box:bool = True, use_log: bool = True) -> np.ndarray:
+        """
+        Get average (log) errors over all white box or black box methods across all tasks.
+        """
+        # We ignore the random baseline here.
+        random_name = self.find_random_name()
+        if white_box:
+            # whitebox names do not include "predictions" in the name
+            alg_names = [alg_name for alg_name in self.alg_names if 'predictions' not in alg_name and alg_name != random_name]
+        else:
+            # blackbox names include "predictions" in the name
+            alg_names = [alg_name for alg_name in self.alg_names if 'predictions' in alg_name and alg_name != random_name]
+
+        # filter by alg_names
+        filtered_results = self.filter_alg_names(alg_names)
+
+        # iterate over all tasks and alg_names in filtered_results
+        # and compute the average log error for each split separately
+        if use_log:
+            return np.mean([np.log([split['errors'][key] for split in split_results])
+                            for task_results in filtered_results.results_dict.values()
+                            for task_name, split_results in task_results.items() if int(task_name.split('_')[-1].split('x')[0]) == 256
+                            ], axis=0)
+        else:
+            return np.mean([[split['errors'][key] for split in split_results]
+                            for task_results in filtered_results.results_dict.values()
+                            for task_name, split_results in task_results.items() if int(task_name.split('_')[-1].split('x')[0]) == 256
+                            ], axis=0)
+
     def select_split(self, i: int) -> 'ExperimentResults':
         for alg_name, task_results in self.results_dict.items():
             for task_name, split_results in task_results.items():
@@ -82,13 +114,13 @@ class ExperimentResults:
                         for task_name, task_dict in alg_dict.items() if task_name.startswith(task_prefix)}
             for alg_name, alg_dict in self.results_dict.items()}, exp_name=self.exp_name)
 
-    def filter_task_names(self, task_names: List[str]) -> 'ExperimentResults':
+    def filter_task_names(self, task_names: typing.List[str]) -> 'ExperimentResults':
         return ExperimentResults(
             {alg_name: {task_name: task_dict
                         for task_name, task_dict in alg_dict.items() if task_name in task_names}
             for alg_name, alg_dict in self.results_dict.items()}, exp_name=self.exp_name)
 
-    def filter_alg_names(self, alg_names: Iterable[str]) -> 'ExperimentResults':
+    def filter_alg_names(self, alg_names: typing.Iterable[str]) -> 'ExperimentResults':
         return ExperimentResults({alg_name: self.results_dict[alg_name] for alg_name in alg_names
                                   if alg_name in self.results_dict}, exp_name=self.exp_name)
 
@@ -221,8 +253,57 @@ def get_latex_task(task: str) -> str:
     return conversion_dict[task]
 
 
+def get_latex_literature_name(selection_method: str, is_black_box: bool=False, incl_box: bool=True) -> str:
+    conversion_dict = {'random': r'{Uniform}',
+                       'fw': r'{ACS-FW}',
+                       'bait-f': r'{BAIT}',
+                       'bait-fb': r'{BAIT}',
+                       'kmeanspp': r'{BADGE}',
+                       'lcmd': r'{LCMD}',
+                       'maxdet': r'{BatchBALD}',
+                       'maxdist': r'{Core-Set}',
+                                  # '\n'
+                                  # r'{FF-Active}',
+                       'maxdiag': r'{BALD}'
+                       }
+
+    parts = selection_method.split('-')
+    method_name = '-'.join(parts[:-1]) if len(parts) > 1 else selection_method
+    result = conversion_dict[method_name]
+    # if len(parts) > 1:
+    #     result += '-TP' if parts[-1] == 'tp' else '-P'
+    if incl_box:
+        if is_black_box:
+            result = r'\textbf{$\blacksquare$ ' + result + "}"
+        else:
+            if method_name != 'random':
+                result = '$\square$ ' + result
+
+    # if method_name == 'lcmd':
+    #     result += ' (ours)'
+    return result
+
+
+def get_color_index(selection_method: str) -> int:
+    conversion_dict = {'random': None,
+                       'fw': 0,
+                       'bait-f': 1,
+                       'bait-fb': 1,
+                       'kmeanspp': 2,
+                       'lcmd': 3,
+                       'maxdet': 4,
+                       'maxdist': 5,
+                       'maxdiag': 6
+                       }
+
+    parts = selection_method.split('-')
+    method_name = '-'.join(parts[:-1]) if len(parts) > 1 else selection_method
+    index = conversion_dict[method_name]
+    return index
+
+
 def get_latex_selection_method(selection_method: str, is_black_box=False) -> str:
-    conversion_dict = {'random': r'\textsc{Random}',
+    conversion_dict = {'random': r'\textsc{Uniform}',
                        'fw': r'\textsc{FrankWolfe}',
                        'bait-f': r'\textsc{Bait-F}',
                        'bait-fb': r'\textsc{Bait-FB}',
@@ -239,16 +320,16 @@ def get_latex_selection_method(selection_method: str, is_black_box=False) -> str
     if len(parts) > 1:
         result += '-TP' if parts[-1] == 'tp' else '-P'
     if is_black_box:
-        result = r'\textbf{BB ' + result + "}"
+        result = r'\textbf{$\blacksquare$ ' + result + "}"
     else:
         if method_name != 'random':
-            result = 'WB ' + result
+            result = '$\square$ ' + result
     # if method_name == 'lcmd':
     #     result += ' (ours)'
     return result
 
 
-def get_latex_kernel(base_kernel: str, kernel_transformations: List[Tuple[str, List]], n_models: int) -> str:
+def get_latex_kernel(base_kernel: str, kernel_transformations: typing.List[typing.Tuple[str, typing.List]], n_models: int) -> str:
     conversion_base_kernel_dict = {'grad': r'\mathrm{grad}',
                                    'll': r'\mathrm{ll}',
                                    'linear': r'\mathrm{lin}',
@@ -434,7 +515,7 @@ def print_all_task_results(exp_results: ExperimentResults):
         print_single_task_results(exp_results, task_name)
 
 
-def print_avg_results(exp_results: ExperimentResults, relative_to: Optional[str] = None,
+def print_avg_results(exp_results: ExperimentResults, relative_to: typing.Optional[str] = None,
                       filter_suffix: str = '256x16'):
     """
     Prints experiment results averaged over splits, steps and data sets.

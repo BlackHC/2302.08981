@@ -2,15 +2,16 @@ import sys
 import traceback
 
 from bmdal_reg.evaluation.plotting import *
+import typing
 from bmdal_reg.evaluation.visualize_lcmd import create_lcmd_plots
 
 # Create a dictionary of LIT_RESULTS_NN_BMDAL with the corresponding labels from LIT_RESULTS_LABELS
 LIT_RESULTS_NN_BMDAL_DICT = {
     'NN_random': 'Uniform',
     'NN_maxdiag_ll_train': r'$\square$ BALD',
+    'NN_fw-p_ll_acs-rf-hyper-512': r'$\square$ ACS-FW',
     'NN_maxdet-p_ll_train': r'$\square$ BatchBALD',
     'NN_bait-fb-p_ll_train': r'$\square$ BAIT',
-    'NN_fw-p_ll_acs-rf-hyper-512': r'$\square$ ACS-FW',
     'NN_maxdist-tp_ll': r'$\square$ Core-Set/\\FF-Active',
     'NN_kmeanspp-p_ll_train': r'$\square$ BADGE',
     'NN_lcmd-tp_grad_rp-512': r'$\square$ LCMD'
@@ -19,9 +20,9 @@ LIT_RESULTS_NN_BMDAL_DICT = {
 # Create a dictionary of LIT_RESULTS_NN_PREDICTIONS with the corresponding labels from LIT_RESULTS_NN_PREDICTIONS_LABELS
 LIT_RESULTS_NN_PREDICTIONS_DICT = {
     'NN_maxdiag_predictions-10': r'$\blacksquare$ BALD',
+    'NN_fw-p_predictions-10': r'$\blacksquare$ ACS-FW',
     'NN_maxdet-p_predictions-10': r'$\blacksquare$ BatchBALD',
     'NN_bait-f-p_predictions-10': r'$\blacksquare$ BAIT',
-    'NN_fw-p_predictions-10': r'$\blacksquare$ ACS-FW',
     'NN_maxdist-p_predictions-10': r'$\blacksquare$ Core-Set/\\FF-Active',
     'NN_kmeanspp-p_predictions-10': r'$\blacksquare$ BADGE',
     'NN_lcmd-tp_predictions-10': r'$\blacksquare$ LCMD'
@@ -51,8 +52,8 @@ LIT_RESULTS_RF_PREDICTIONS_DICT = {
     "RF_lcmd-tp_predictions-1": r"$\blacksquare$ LCMD",
 }
 
-def plot_all(results: ExperimentResults, alg_names: List[str], with_batch_size_plots: bool = True,
-             literature_results_dict: Dict[str, str] = LIT_RESULTS_NN_BMDAL_DICT):
+def plot_all(results: ExperimentResults, alg_names: typing.List[str], with_batch_size_plots: bool = True,
+             literature_results_dict: typing.Dict[str, str] = LIT_RESULTS_NN_BMDAL_DICT):
     selected_results = results.filter_alg_names(alg_names)
     literature_results = results.filter_alg_names(list(literature_results_dict.keys()))
     literature_names = list(literature_results_dict.values())
@@ -66,7 +67,7 @@ def plot_all(results: ExperimentResults, alg_names: List[str], with_batch_size_p
                                use_last_error=True)
 
     print('Creating learning curve plots...')
-    plot_learning_curves_metrics_subplots(results=literature_results, filename='learning_curves_metrics.pdf', labels=literature_names)
+    plot_learning_curves_metrics_subplots(results=literature_results, filename='learning_curves_metrics.pdf')
     plot_multiple_learning_curves(results=selected_results, filename='learning_curves_rmse_maxe.pdf',
                                   metric_names=['rmse', 'maxe'])
     plot_multiple_learning_curves(results=selected_results, filename='learning_curves_q95_q99.pdf',
@@ -75,9 +76,9 @@ def plot_all(results: ExperimentResults, alg_names: List[str], with_batch_size_p
         plot_learning_curves(results=selected_results, filename=f'learning_curves_{metric_name}.pdf',
                              metric_name=metric_name)
         plot_learning_curves(results=literature_results, filename=f'learning_curves_literature_{metric_name}.pdf',
-                             metric_name=metric_name, labels=literature_names, figsize=(6, 5))
+                             metric_name=metric_name, figsize=(6, 5))
         plot_learning_curves(results=literature_results, filename=f'learning_curves_literature_wide_{metric_name}.pdf',
-                             metric_name=metric_name, labels=literature_names, figsize=(8, 3.5))
+                             metric_name=metric_name, figsize=(8, 3.5))
 
     print('Creating individual learning curve plots with subplots...')
     for metric_name in ['mae', 'rmse', 'q95', 'q99', 'maxe']:

@@ -1,4 +1,10 @@
+import itertools
+
 import matplotlib
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
+from matplotlib.text import Text
+
 #matplotlib.use('Agg')
 matplotlib.use('pdf')
 matplotlib.rcParams.update({
@@ -19,6 +25,7 @@ import matplotlib.pyplot as plt
 from .analysis import *
 from pathlib import Path
 import seaborn as sns
+import typing
 
 fontsize = 10
 axis_font = {'size': str(fontsize)}
@@ -109,8 +116,8 @@ def plot_batch_sizes_ax(ax: plt.Axes, results: ExperimentResults, metric_name: s
         ax.set_ylabel(r'mean log ' + f'{get_latex_metric_name(metric_name)}', **axis_font)
 
 
-def plot_batch_sizes(results: ExperimentResults, filename: Union[str, Path], metric_name: str,
-                     figsize: Optional[Tuple[float, float]] = None):
+def plot_batch_sizes(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str,
+                     figsize: typing.Optional[typing.Tuple[float, float]] = None):
     # plot mean final log metric against the al batch size
     fig, ax = plt.subplots(figsize=figsize or (4, 4))
 
@@ -124,8 +131,8 @@ def plot_batch_sizes(results: ExperimentResults, filename: Union[str, Path], met
     plt.close(fig)
 
 
-def plot_multiple_batch_sizes(results: ExperimentResults, filename: Union[str, Path],
-                                  metric_names: List[str]):
+def plot_multiple_batch_sizes(results: ExperimentResults, filename: typing.Union[str, Path],
+                              metric_names: typing.List[str]):
     # plot averaged learning curve for all tasks
     fig, axs = plt.subplots(1, len(metric_names), figsize=(7, 4))
 
@@ -158,7 +165,7 @@ def plot_batch_sizes_individual(results: ExperimentResults, metric_name: str):
         plt.close(fig)
 
 
-def plot_batch_sizes_individual_subplots(results: ExperimentResults, filename: Union[str, Path], metric_name: str):
+def plot_batch_sizes_individual_subplots(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str):
     # plot mean final log metric against the al batch size
     ds_names = list({'_'.join(task_name.split('_')[:-1]) for task_name in results.task_names})
     ds_names.sort()
@@ -194,7 +201,7 @@ def plot_batch_sizes_individual_subplots(results: ExperimentResults, filename: U
     plt.close(fig)
 
 
-def plot_batch_sizes_metrics_subplots(results: ExperimentResults, filename: Union[str, Path]):
+def plot_batch_sizes_metrics_subplots(results: ExperimentResults, filename: typing.Union[str, Path]):
     # plot mean final log metric against the al batch size
 
     fig, axs = plt.subplots(3, 2, figsize=(8, 9))
@@ -215,7 +222,7 @@ def plot_batch_sizes_metrics_subplots(results: ExperimentResults, filename: Unio
 
 
 def plot_learning_curves_ax(ax: plt.Axes, results: ExperimentResults, metric_name: str, with_random_final: bool = True,
-                            set_ticks_and_labels: bool = True, labels: Optional[List[str]] = None, **plot_options):
+                            set_ticks_and_labels: bool = True, **plot_options):
     learning_curves = results.get_learning_curves(metric_name)
 
     # https://stackoverflow.com/questions/42086276/get-default-line-colour-cycle
@@ -227,9 +234,6 @@ def plot_learning_curves_ax(ax: plt.Axes, results: ExperimentResults, metric_nam
 
     ds_names = list({'_'.join(task_name.split('_')[:-1]) for task_name in results.task_names})
 
-    pred_color_idx = 0
-    color_idx = 0
-
     random_name = find_random_name(results)
 
     for i, alg_name in enumerate(results.alg_names):
@@ -239,23 +243,34 @@ def plot_learning_curves_ax(ax: plt.Axes, results: ExperimentResults, metric_nam
 
         plot_options = utils.update_dict(dict(alpha=0.7, markersize=3.5), plot_options)
 
-        label = get_latex_selection_method(alg_name.split('_')[1], "predictions" in alg_name) if labels is None else labels[i]
-
         if alg_name == random_name:
-            ax.plot(np.log(n_train), results_list, '--o', color='k', label=label, **plot_options)
+            ax.plot(np.log(n_train), results_list, '--o', color='k', **plot_options)
             if with_random_final:
                 ax.plot([np.log(n_train[0]), np.log(n_train[-1])], [results_list[-1], results_list[-1]],
                         '--', color='k', linewidth=0.5, **plot_options)
-        elif "predictions" in alg_name:
-            # ax.plot(np.log(n_train), results_list, '-', marker=markers[pred_color_idx], color=colors[pred_color_idx],
-            ax.plot(np.log(n_train), results_list, '-', color=colors[pred_color_idx],
-                    label=label, **plot_options)
-            pred_color_idx += 1
         else:
-            # ax.plot(np.log(n_train), results_list, '--', marker=markers[color_idx], color=colors[color_idx],
-            ax.plot(np.log(n_train), results_list, '--', color=colors[color_idx],
-                    label=label, linewidth=1., **plot_options)
-            color_idx += 1
+            color_idx = colors[get_color_index(alg_name.split('_')[1])]
+            if "predictions" in alg_name:
+                # ax.plot(np.log(n_train), results_list, '-', marker=markers[pred_color_idx], color=colors[pred_color_idx],
+                ax.plot(np.log(n_train), results_list, '-', color=color_idx,
+                        **plot_options)
+            else:
+                # ax.plot(np.log(n_train), results_list, '--', marker=markers[color_idx], color=colors[color_idx],
+                ax.plot(np.log(n_train), results_list, '--', color=color_idx, linewidth=1., **plot_options)
+
+    # Plot white box average:
+    wb_learning_curve = np.mean(results.get_learning_curves_by_box(metric_name, white_box=True), axis=0)
+    n_train = np.asarray([256 * (i + 1) for i in range(len(wb_learning_curve))])
+    ax.plot(np.log(n_train), wb_learning_curve, '--s', color='gray', linewidth=3., **plot_options)
+
+    # Plot black box average:
+    bb_learning_curve = np.mean(results.get_learning_curves_by_box(metric_name, white_box=False), axis=0)
+    n_train = np.asarray([256 * (i + 1) for i in range(len(bb_learning_curve))])
+    ax.plot(np.log(n_train), bb_learning_curve, '-s', color='k', linewidth=3., **plot_options)
+
+    if with_random_final:
+        ax.plot([np.log(n_train[0]), np.log(n_train[-1])], [results_list[-1], results_list[-1]],
+                '--', color='k', linewidth=0.5, **plot_options)
 
     if set_ticks_and_labels:
         xlocs = (np.log(256), np.log(512), np.log(1024), np.log(2048), np.log(4096))
@@ -269,7 +284,7 @@ def plot_learning_curves_ax(ax: plt.Axes, results: ExperimentResults, metric_nam
 
 
 def plot_learning_curves_ax_ci(ax: plt.Axes, results: ExperimentResults, metric_name: str, with_random_final: bool = True,
-                            set_ticks_and_labels: bool = True, labels: Optional[List[str]] = None, **plot_options):
+                               set_ticks_and_labels: bool = True, labels: typing.Optional[typing.List[str]] = None, **plot_options):
     learning_curves_ci = results.get_learning_curves_ci(metric_name)
 
 
@@ -324,14 +339,55 @@ def plot_learning_curves_ax_ci(ax: plt.Axes, results: ExperimentResults, metric_
         ax.set_ylabel(r'mean log ' + f'{get_latex_metric_name(metric_name)}', **axis_font)
 
 
-def plot_learning_curves(results: ExperimentResults, filename: Union[str, Path], metric_name: str,
-                         labels: Optional[List[str]] = None, figsize: Optional[Tuple[float, float]] = None):
+# https://stackoverflow.com/questions/10101141/matplotlib-legend-add-items-across-columns-instead-of-down
+def flip(items, ncol):
+    return itertools.chain(*[items[i::ncol] for i in range(ncol)])
+
+def plot_learning_curves(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str,
+                         figsize: typing.Optional[typing.Tuple[float, float]] = None):
     # plot averaged learning curve for all tasks
     fig, axs = plt.subplots(figsize=figsize or (3.5, 3.5))
 
-    plot_learning_curves_ax(axs, results=results, metric_name=metric_name, labels=labels)
+    random_name = find_random_name(results)
+    incl_box = random_name != 'NN_random'
 
-    axs.legend(ncol=2)
+    plot_learning_curves_ax(axs, results=results, metric_name=metric_name)
+
+    # Build custom legend
+    # We want to separate by color and by line style. The color is determined by whether the alg_name.
+    # The style is determined by whether the alg_name contains "predictions".
+    # List of handles
+    handles = []
+    # add transparent patch
+    handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label='Acq. Function'))
+    all_labels = {get_latex_literature_name(alg_name.split('_')[1], "predictions" in alg_name, incl_box) for alg_name in results.alg_names}
+    labels = set()
+    for i, alg_name in enumerate(results.alg_names):
+        label = get_latex_literature_name(alg_name.split('_')[1], "predictions" in alg_name, incl_box)
+        if label in labels:
+            continue
+        if i % (len(all_labels)//2) == 0 and i != 0:
+            handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label=''))
+        labels.add(label)
+
+        color = 'k' if alg_name == random_name else colors[get_color_index(alg_name.split('_')[1])]
+        handle = Line2D([0], [0], color=color, linestyle='-', label=label)
+        handles.append(handle)
+
+    if not incl_box:
+        if len(labels) % 2 != 0:
+            handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label=''))
+        handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label='Method'))
+        handles.append(Line2D([0], [0], color='k', linestyle='-', label=r'\textbf{Black Box}'))
+        handles.append(Line2D([0], [0], color='k', linestyle='--', label=r'White Box'))
+        # TODO: replace with for loop
+        handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label=''))
+        #handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label=''))
+
+    l = axs.legend(handles=handles, ncol=2 if incl_box else 3, loc='lower left')
+    # Left align legend texts
+    plt.setp(l.get_texts(), multialignment='left')
+
     plt.tight_layout()
     plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
     utils.ensureDir(plot_name)
@@ -339,8 +395,8 @@ def plot_learning_curves(results: ExperimentResults, filename: Union[str, Path],
     plt.close(fig)
 
 
-def plot_multiple_learning_curves(results: ExperimentResults, filename: Union[str, Path],
-                                  metric_names: List[str]):
+def plot_multiple_learning_curves(results: ExperimentResults, filename: typing.Union[str, Path],
+                                  metric_names: typing.List[str]):
     # plot averaged learning curve for all tasks
     fig, axs = plt.subplots(1, len(metric_names), figsize=(7, 4))
 
@@ -412,7 +468,7 @@ def plot_learning_curves_individual_subplots(results: ExperimentResults, filenam
     plt.close(fig)
 
 
-def plot_learning_curves_metrics_subplots(results: ExperimentResults, filename: Union[str, Path], labels: Optional[List[str]] = None):
+def plot_learning_curves_metrics_subplots(results: ExperimentResults, filename: typing.Union[str, Path], labels: typing.Optional[typing.List[str]] = None):
     # plot mean final log metric against the al batch size
     fig, axs = plt.subplots(3, 2, figsize=(7.2, 9))
     metric_names = ['mae', 'rmse', 'q95', 'q99', 'maxe']
@@ -420,7 +476,7 @@ def plot_learning_curves_metrics_subplots(results: ExperimentResults, filename: 
         i = metric_idx // 2
         j = metric_idx % 2
         ax = axs[i, j]
-        plot_learning_curves_ax(ax, results, metric_name, labels=labels)
+        plot_learning_curves_ax(ax, results, metric_name)
 
     axs[-1, -1].axis('off')
     fig.legend(*axs[0, 0].get_legend_handles_labels(), loc='center', bbox_to_anchor=(0.78, 0.18), ncol=2)
@@ -431,7 +487,7 @@ def plot_learning_curves_metrics_subplots(results: ExperimentResults, filename: 
     plt.close(fig)
 
 
-def plot_correlation_between_methods(results: ExperimentResults, filename: Union[str, Path], metric_name: str):
+def plot_correlation_between_methods(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str):
     sns.color_palette("Paired")
 
     # plot mean final log metric against the al batch size
@@ -511,7 +567,7 @@ def plot_correlation_between_methods(results: ExperimentResults, filename: Union
 
 
 def find_random_name(results):
-    return [alg_name for alg_name in results.alg_names if alg_name.endswith('_random')][0]
+    return results.find_random_name()
 
 
 def plot_skewness_ax(ax: plt.Axes, results: ExperimentResults, metric_name: str, alg_name: str,
@@ -580,7 +636,7 @@ def plot_skewness_ax(ax: plt.Axes, results: ExperimentResults, metric_name: str,
     print(f'plot_skewness_ax: R^2 = {r_value**2:g}')
 
 
-def plot_error_variation(results: ExperimentResults, filename: Union[str, Path], metric_name: str, alg_name: str,
+def plot_error_variation(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str, alg_name: str,
                          use_relative_improvement: bool = False):
     fig, ax = plt.subplots(1, 1, figsize=(4.0, 4.0))
 
@@ -597,7 +653,7 @@ def plot_error_variation(results: ExperimentResults, filename: Union[str, Path],
 # ----- not needed plots -----
 
 
-def plot_eff_dim(results: ExperimentResults, filename: Union[str, Path], pattern: str, metric_name: str):
+def plot_eff_dim(results: ExperimentResults, filename: typing.Union[str, Path], pattern: str, metric_name: str):
     # plots, for every data set, error of grad_rp-512 to ll vs difference in effective dimensions (average),
     # for different selection methods (esp. maxdist, maxdet, lcmd, fw),
     all_alg_names = [pattern.replace('*', 'll'), pattern.replace('*', 'grad_rp-512')]
@@ -630,7 +686,7 @@ def plot_eff_dim(results: ExperimentResults, filename: Union[str, Path], pattern
     plt.close(fig)
 
 
-def plot_learning_curves_v2(results: ExperimentResults, filename: Union[str, Path], metric_name: str):
+def plot_learning_curves_v2(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str):
     # plot averaged learning curve for all tasks
     all_alg_names = list(results.results_dict.keys())
     all_task_names = {task_name for alg_name in all_alg_names for task_name in results.results_dict[alg_name].keys()}
@@ -662,7 +718,7 @@ def plot_learning_curves_v2(results: ExperimentResults, filename: Union[str, Pat
     plt.close(fig)
 
 
-def alt_plot_eff_dim(results: ExperimentResults, filename: Union[str, Path], pattern: str, metric_name: str):
+def alt_plot_eff_dim(results: ExperimentResults, filename: typing.Union[str, Path], pattern: str, metric_name: str):
     # plots, for every data set, error of grad_rp-512 to ll vs difference in effective dimensions (average),
     # for different selection methods (esp. maxdist, maxdet, lcmd, fw),
     random_name = find_random_name(results)

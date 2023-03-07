@@ -720,6 +720,7 @@ def get_sklearn_configs() -> RunConfigList:
         ("RF", sklearn_models.RandomForestRegressor, 100, 1e-6, 1e-7),
         ("VE-CAT", sklearn_models.VECatBoostRegressor, 20, 9e-6, 8e-8),
         ("HGR", sklearn_models.HistGradientBoostingRegressor, 10, 9e-7, 7e-8),
+        ("BaggingCAT", sklearn_models.BaggingCatBoostRegressor, 5, 9e-5, 8e-7),
     ]:
         lst += get_bmdal_sklearn_predictions_configs(prefix=prefix, create_model=create_model, n_models=n_models,
                                                      mem_threshold=mem_threshold, bs_mem_threshold=bs_mem_threshold)

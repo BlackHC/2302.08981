@@ -716,12 +716,12 @@ def run_experiments(exp_name: str, n_splits: int, run_config_list: RunConfigList
 
 def get_sklearn_configs() -> RunConfigList:
     lst = RunConfigList()
-    for prefix, create_model, mem_threshold, bs_mem_threshold in [
-        ("RF", sklearn_models.RandomForestRegressor, 1e-6, 1e-7),
-        ("VE-CAT", sklearn_models.CatBoostRegressor, 9e-6, 8e-8),
-        #("HGR", sklearn_models.HistGradientBoostingRegressor, 9e-7, 7e-8),
+    for prefix, create_model, n_models, mem_threshold, bs_mem_threshold in [
+        ("RF", sklearn_models.RandomForestRegressor, 100, 1e-6, 1e-7),
+        ("VE-CAT", sklearn_models.VECatBoostRegressor, 20, 9e-6, 8e-8),
+        ("HGR", sklearn_models.HistGradientBoostingRegressor, 10, 9e-7, 7e-8),
     ]:
-        lst += get_bmdal_sklearn_predictions_configs(prefix=prefix, create_model=create_model,
+        lst += get_bmdal_sklearn_predictions_configs(prefix=prefix, create_model=create_model, n_models=n_models,
                                                      mem_threshold=mem_threshold, bs_mem_threshold=bs_mem_threshold)
     return lst
 

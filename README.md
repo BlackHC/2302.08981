@@ -1,3 +1,20 @@
+## Andreas Scratch Commands
+
+Copilot, help me find the bash command to rename files as follows:
+
+results/sklearn/diamonds_256x16/RF_lcmd-p_predictions-1 -> results/sklearn/diamonds_256x16/RF_lcmd-p_predictions-100
+results/sklearn/diamonds_256x16/VE-CAT_bait-fb-p_predictions-1 -> results/sklearn/diamonds_256x16/VE-CAT_bait-fb-p_predictions-100
+
+Answer:
+
+```bash
+for f in results/sklearn/*_256x16/RF_*_predictions-1; do echo mv $f ${f%_predictions-1}_predictions-100; done
+```
+
+```bash
+for f in results/sklearn/*_256x16/VE-CAT_*_predictions-1; do echo mv $f ${f%_predictions-1}_predictions-20; done
+```
+
 # Deep Batch Active Learning for Regression
 [![Identifier](https://img.shields.io/badge/doi-10.18419%2Fdarus--807-d45815.svg)](https://doi.org/10.18419/darus-3110)
 

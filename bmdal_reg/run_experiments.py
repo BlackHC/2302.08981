@@ -75,8 +75,8 @@ def get_bmdal_sklearn_predictions_configs(*, prefix, mem_threshold=9e-6, bs_mem_
         :param kwargs: allows to set some hyperparameters, for example the learning rate, sigma_w, sigma_b, etc.
         :return: Returns a list of configurations for BMDAL used in the paper.
         """
-    sigma = kwargs.get('post_sigma', 0.1)
-    n_models = kwargs.get('n_models', 1)
+    sigma = kwargs.pop('post_sigma', 0.1)
+    n_models = kwargs.pop('n_models', 1)
     compute_eff_dim = True
     kwargs = utils.update_dict(dict(maxdet_sigma=sigma, bait_sigma=sigma, compute_eff_dim=compute_eff_dim,
                                     allow_float64=True, lr=0.375, weight_gain=0.2, bias_gain=0.2), kwargs)

@@ -31,25 +31,49 @@ LIT_RESULTS_NN_PREDICTIONS_DICT = {
 # Create a dictionary of LIT_RESULTS_VE_CAT_PREDICTIONS with the corresponding labels
 LIT_RESULTS_VE_CAT_PREDICTIONS_DICT = {
     "VE-CAT_random": "Uniform",
-    "VE-CAT_maxdiag_predictions-1": r"$\blacksquare$ BALD",
-    "VE-CAT_maxdet-p_predictions-1": r"$\blacksquare$ BatchBALD",
-    'VE-CAT_bait-f-p_predictions-1': r'$\blacksquare$ BAIT',
-    "VE-CAT_fw-p_predictions-1": r"$\blacksquare$ ACS-FW",
-    "VE-CAT_maxdist-p_predictions-1": r"$\blacksquare$ Core-Set/\\FF-Active",
-    "VE-CAT_kmeanspp-p_predictions-1": r"$\blacksquare$ BADGE",
-    "VE-CAT_lcmd-tp_predictions-1": r"$\blacksquare$ LCMD",
+    "VE-CAT_maxdiag_predictions-20": r"$\blacksquare$ BALD",
+    "VE-CAT_maxdet-p_predictions-20": r"$\blacksquare$ BatchBALD",
+    'VE-CAT_bait-f-p_predictions-20': r'$\blacksquare$ BAIT',
+    "VE-CAT_fw-p_predictions-20": r"$\blacksquare$ ACS-FW",
+    "VE-CAT_maxdist-p_predictions-20": r"$\blacksquare$ Core-Set/\\FF-Active",
+    "VE-CAT_kmeanspp-p_predictions-20": r"$\blacksquare$ BADGE",
+    "VE-CAT_lcmd-tp_predictions-20": r"$\blacksquare$ LCMD",
 }
 
 # Create a dictionary of LIT_RESULTS_VE_CAT_PREDICTIONS with the corresponding labels
 LIT_RESULTS_RF_PREDICTIONS_DICT = {
     "RF_random": "Uniform",
-    "RF_maxdiag_predictions-1": r"$\blacksquare$ BALD",
-    "RF_maxdet-p_predictions-1": r"$\blacksquare$ BatchBALD",
-    'RF_bait-f-p_predictions-1': r'$\blacksquare$ BAIT',
-    "RF_fw-p_predictions-1": r"$\blacksquare$ ACS-FW",
-    "RF_maxdist-p_predictions-1": r"$\blacksquare$ Core-Set/\\FF-Active",
-    "RF_kmeanspp-p_predictions-1": r"$\blacksquare$ BADGE",
-    "RF_lcmd-tp_predictions-1": r"$\blacksquare$ LCMD",
+    "RF_maxdiag_predictions-100": r"$\blacksquare$ BALD",
+    "RF_maxdet-p_predictions-100": r"$\blacksquare$ BatchBALD",
+    'RF_bait-f-p_predictions-100': r'$\blacksquare$ BAIT',
+    "RF_fw-p_predictions-100": r"$\blacksquare$ ACS-FW",
+    "RF_maxdist-p_predictions-100": r"$\blacksquare$ Core-Set/\\FF-Active",
+    "RF_kmeanspp-p_predictions-100": r"$\blacksquare$ BADGE",
+    "RF_lcmd-tp_predictions-100": r"$\blacksquare$ LCMD",
+}
+
+# Create a dictionary of LIT_RESULTS_VE_CAT_PREDICTIONS with the corresponding labels
+LIT_RESULTS_BAGGING_RF_PREDICTIONS_DICT = {
+    "RF_random": "Uniform",
+    "BagggingRF_maxdiag_predictions-10": r"$\blacksquare$ BALD",
+    "BagggingRF_maxdet-p_predictions-10": r"$\blacksquare$ BatchBALD",
+    'BagggingRF_bait-f-p_predictions-10': r'$\blacksquare$ BAIT',
+    "BagggingRF_fw-p_predictions-10": r"$\blacksquare$ ACS-FW",
+    "BagggingRF_maxdist-p_predictions-10": r"$\blacksquare$ Core-Set/\\FF-Active",
+    "BagggingRF_kmeanspp-p_predictions-10": r"$\blacksquare$ BADGE",
+    "BagggingRF_lcmd-tp_predictions-10": r"$\blacksquare$ LCMD",
+}
+
+# Create a dictionary of LIT_RESULTS_VE_CAT_PREDICTIONS with the corresponding labels
+LIT_RESULTS_BAGGING_CAT_PREDICTIONS_DICT = {
+    "BaggingCAT_random": "Uniform",
+    "BaggingCAT_maxdiag_predictions-5": r"$\blacksquare$ BALD",
+    "BaggingCAT_maxdet-p_predictions-5": r"$\blacksquare$ BatchBALD",
+    'BaggingCAT_bait-f-p_predictions-5': r'$\blacksquare$ BAIT',
+    "BaggingCAT_fw-p_predictions-5": r"$\blacksquare$ ACS-FW",
+    "BaggingCAT_maxdist-p_predictions-5": r"$\blacksquare$ Core-Set/\\FF-Active",
+    "BaggingCAT_kmeanspp-p_predictions-5": r"$\blacksquare$ BADGE",
+    "BaggingCAT_lcmd-tp_predictions-5": r"$\blacksquare$ LCMD",
 }
 
 def plot_all(results: ExperimentResults, alg_names: typing.List[str], with_batch_size_plots: bool = True,
@@ -145,27 +169,48 @@ if __name__ == '__main__':
         results.analyze_eff_dims()
 
         if exp_name == 'sklearn':
-            try:
-                # filter results to only contain algs with RF_ as prefix
-                rf_results = results.filter_alg_names(list(filter(lambda alg_name: alg_name.startswith('RF_'), results.alg_names)))
-                # selected algs for ReLU (best ones in terms of RMSE after ignoring slow ones, see table in the paper)
-                alg_names_sklearn = list(LIT_RESULTS_RF_PREDICTIONS_DICT.keys())
-                plot_all(rf_results, alg_names=alg_names_sklearn, literature_results_dict=LIT_RESULTS_RF_PREDICTIONS_DICT, with_batch_size_plots=False)
-            except:
-                traceback.print_exc()
+            # try:
+            #     # filter results to only contain algs with RF_ as prefix
+            #     rf_results = results.filter_alg_names(list(filter(lambda alg_name: alg_name.startswith('RF_'), results.alg_names)))
+            #     # selected algs for ReLU (best ones in terms of RMSE after ignoring slow ones, see table in the paper)
+            #     alg_names_sklearn = list(LIT_RESULTS_RF_PREDICTIONS_DICT.keys())
+            #     plot_all(rf_results, alg_names=alg_names_sklearn, literature_results_dict=LIT_RESULTS_RF_PREDICTIONS_DICT, with_batch_size_plots=False)
+            # except:
+            #     traceback.print_exc()
+
+            # try:
+            #     # filter results to only contain algs with VE-CAT_ as prefix
+            #     rf_results = results.filter_alg_names(list(filter(lambda alg_name: alg_name.startswith('VE-CAT_'), results.alg_names)))
+            #     rf_results.exp_name = 'sklearn-ve-cat'
+            #     alg_names_sklearn = list(LIT_RESULTS_VE_CAT_PREDICTIONS_DICT.keys())
+            #     plot_all(rf_results, alg_names=alg_names_sklearn, literature_results_dict=LIT_RESULTS_VE_CAT_PREDICTIONS_DICT, with_batch_size_plots=False)
+            # except:
+            #     traceback.print_exc()
 
             try:
                 # filter results to only contain algs with VE-CAT_ as prefix
-                rf_results = results.filter_alg_names(list(filter(lambda alg_name: alg_name.startswith('VE-CAT_'), results.alg_names)))
-                rf_results.exp_name = 'sklearn-ve-cat'
-                alg_names_sklearn = list(LIT_RESULTS_VE_CAT_PREDICTIONS_DICT.keys())
-                plot_all(rf_results, alg_names=alg_names_sklearn, literature_results_dict=LIT_RESULTS_VE_CAT_PREDICTIONS_DICT, with_batch_size_plots=False)
+                alg_names_list=list(filter(lambda alg_name: alg_name.startswith('BagggingRF_'), results.alg_names))
+                alg_names_list.remove('BagggingRF_random')
+                alg_names_list.append('RF_random')
+                rf_results = results.filter_alg_names(alg_names_list)
+                rf_results.exp_name = 'sklearn-bagging-rf'
+                alg_names_sklearn = list(LIT_RESULTS_BAGGING_RF_PREDICTIONS_DICT.keys())
+                plot_all(rf_results, alg_names=alg_names_sklearn, literature_results_dict=LIT_RESULTS_BAGGING_RF_PREDICTIONS_DICT, with_batch_size_plots=True)
             except:
                 traceback.print_exc()
+
+            # try:
+            #     # filter results to only contain algs with VE-CAT_ as prefix
+            #     rf_results = results.filter_alg_names(list(filter(lambda alg_name: alg_name.startswith('BaggingCAT_'), results.alg_names)))
+            #     rf_results.exp_name = 'sklearn-bagging-cat'
+            #     alg_names_sklearn = list(LIT_RESULTS_BAGGING_CAT_PREDICTIONS_DICT.keys())
+            #     plot_all(rf_results, alg_names=alg_names_sklearn, literature_results_dict=LIT_RESULTS_BAGGING_CAT_PREDICTIONS_DICT, with_batch_size_plots=False)
+            # except:
+            #     traceback.print_exc()
         if exp_name == 'relu':
             # selected algs for ReLU (best ones in terms of RMSE after ignoring slow ones, see table in the paper)
             alg_names_relu = list(LIT_RESULTS_NN_BMDAL_DICT.keys()) + list(LIT_RESULTS_NN_PREDICTIONS_DICT.keys())
-            plot_all(results, alg_names=alg_names_relu, with_batch_size_plots=False, literature_results_dict=LIT_RESULTS_NN_BMDAL_DICT | LIT_RESULTS_NN_PREDICTIONS_DICT)
+            plot_all(results, alg_names=alg_names_relu, with_batch_size_plots=True, literature_results_dict=LIT_RESULTS_NN_BMDAL_DICT | LIT_RESULTS_NN_PREDICTIONS_DICT)
 
         print('Finished plotting')
         print()

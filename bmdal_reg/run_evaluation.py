@@ -57,13 +57,14 @@ def plot_all(results: ExperimentResults, alg_names: typing.List[str], with_batch
     selected_results = results.filter_alg_names(alg_names)
     literature_results = results.filter_alg_names(list(literature_results_dict.keys()))
 
-    # print('Generating tables...')
-    # save_latex_table_all_algs(results, 'table_all_algs.txt')
-    # save_latex_table_data_sets(selected_results, 'table_data_sets.txt')
-    # save_latex_table_data_sets(selected_results, 'table_data_sets_lasterror.txt', use_last_error=True)
-    # save_latex_table_data_sets(selected_results, 'table_data_sets_nolog.txt', use_log=False)
-    # save_latex_table_data_sets(selected_results, 'table_data_sets_nolog_lasterror.txt', use_log=False,
-    #                            use_last_error=True)
+    print('Generating tables...')
+    save_latex_table_all_algs(results, 'table_all_algs.txt')
+    save_latex_table_all_algs(selected_results, 'table_selected_algs.txt')
+    save_latex_table_data_sets(selected_results, 'table_data_sets.txt')
+    save_latex_table_data_sets(selected_results, 'table_data_sets_lasterror.txt', use_last_error=True)
+    save_latex_table_data_sets(selected_results, 'table_data_sets_nolog.txt', use_log=False)
+    save_latex_table_data_sets(selected_results, 'table_data_sets_nolog_lasterror.txt', use_log=False,
+                               use_last_error=True)
 
     print('Creating learning curve plots...')
     plot_learning_curves_metrics_subplots(results=literature_results, filename='learning_curves_metrics.pdf')
@@ -92,8 +93,11 @@ def plot_all(results: ExperimentResults, alg_names: typing.List[str], with_batch
     print('Creating correlation plots...')
     for metric_name in metric_names:
         plot_correlation_between_methods_wb_vs_bb(results=selected_results,
-                                         filename=f'correlation_between_bb_vs_wb_methods_{metric_name}.pdf',
-                                         metric_name=metric_name)
+                                         filename=f'last_correlation_between_bb_vs_wb_methods_{metric_name}.pdf',
+                                         metric_name=metric_name, use_last_error=True)
+        plot_correlation_between_methods_wb_vs_bb(results=selected_results,
+                                         filename=f'avg_correlation_between_bb_vs_wb_methods_{metric_name}.pdf',
+                                         metric_name=metric_name, use_last_error=False)
     # print('Creating individual learning curve plots...')
     # for metric_name in ['mae', 'rmse', 'q95', 'q99', 'maxe']:
     #     plot_learning_curves_individual(results=selected_results, metric_name=metric_name)

@@ -373,7 +373,7 @@ def get_latex_kernel(base_kernel: str, kernel_transformations: typing.List[typin
     return '$k_{' + r' \to '.join(steps) + '}$'
 
 
-def save_latex_table_all_algs(results: ExperimentResults, filename: str):
+def save_latex_table_all_algs(results: ExperimentResults, filename: str, use_literature_names: bool=True, incl_kernel:bool=False, incl_timings:bool=False):
     # creates a table for all algorithms, all metric are averaged over all data sets
     # Selection method | Kernel | MAE | RMSE | 95% | 99% | MAXE | avg. time
 
@@ -402,11 +402,21 @@ def save_latex_table_all_algs(results: ExperimentResults, filename: str):
         best_alg_names_per_metric[metric_name] = [all_alg_names[i] for i in range(len(all_alg_names))
                                                   if rounded_results[i] == min_result]
 
+
+    method_column_name = "Acquisition function" if use_literature_names else "Selection method"
     table_rows = {}
-    table_header = '\\begin{tabular}{cccccccc}\n' + \
-                   ' & '.join([r'Selection method', r'Kernel', r'MAE', r'RMSE', r'95\%', r'99\%',
-                               r'MAXE', r'avg.\ time [$s$]']) + '\\\\\n\\hline\n'
-    table_footer = '\n\\end{tabular}'
+    columns = [method_column_name]
+    if incl_kernel:
+        columns += [r'Kernel']
+    columns += [r'MAE', r'RMSE', r'95\%', r'99\%',
+          r'MAXE']
+    if incl_timings:
+        columns += [r'avg.\ time [$s$]']
+
+    alignment ='l' + 'r'* (len(columns)-1)
+    table_header = '\\begin{tabular}{' + alignment + '}\n\\toprule\n' + \
+                   ' & '.join(columns) + '\\\\\n\\midrule\n'
+    table_footer = '\\\\\n\\bottomrule\n\\end{tabular}'
 
     # raw_sel_order = {'random': 0, 'maxdiag': 1, 'maxdet': 2, 'fw': 3, 'maxdist': 4, 'kmeanspp': 5, 'lcmd': 6}
     sel_name_order = ['random', 'maxdiag', 'maxdet', 'bait', 'fw', 'maxdist', 'kmeanspp', 'lcmd']
@@ -420,7 +430,10 @@ def save_latex_table_all_algs(results: ExperimentResults, filename: str):
         n_models = config.get('n_models', 1)
 
         raw_sel_name = name_alg.split('_')[1].split('-')[0]
-        sel_name = get_latex_selection_method(name_alg.split('_')[1], "predictions" in name_alg)
+        if use_literature_names:
+            sel_name = get_latex_literature_name_new(name_alg)
+        else:
+            sel_name = get_latex_selection_method_new(name_alg)
         raw_sel_names[name_alg] = raw_sel_name
         kernel_name = get_latex_kernel(base_kernel, kernel_transformations, n_models=n_models)
         if raw_sel_name == 'random':
@@ -433,7 +446,12 @@ def save_latex_table_all_algs(results: ExperimentResults, filename: str):
             alg_results.append(value_str)
         alg_time = alg_metrics[name_alg]['kernel_time'] + alg_metrics[name_alg]['selection_time']
 
-        row_strs = [sel_name, kernel_name] + alg_results + [f'{alg_time:5.3f}']
+        row_strs = [sel_name]
+        if incl_kernel:
+            row_strs += [kernel_name]
+        row_strs += alg_results
+        if incl_timings:
+            row_strs += [f'{alg_time:5.3f}']
         table_rows[name_alg] = ' & '.join(row_strs)
 
     sub_groups = [[alg_name for alg_name in all_alg_names if raw_sel_names[alg_name] == sel_name] for sel_name in sel_name_order]
@@ -443,7 +461,7 @@ def save_latex_table_all_algs(results: ExperimentResults, filename: str):
 
     sub_group_strs = ['\\\\\n'.join([table_rows[alg_name] for alg_name in sub_group]) for sub_group in sub_groups]
 
-    result_str = table_header + ' \\\\\n\\hline\n'.join(sub_group_strs) + table_footer
+    result_str = table_header + ' \\\\\n\\midrule\n'.join(sub_group_strs) + table_footer
 
     utils.writeToFile(Path(custom_paths.get_plots_path()) / results.exp_name / filename, result_str)
 

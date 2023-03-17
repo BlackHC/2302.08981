@@ -388,8 +388,8 @@ def add_axis_or_figure_legend(axis_or_fig, results, ncol, **legend_kwargs):
 
     if not incl_box:
         handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label='Method'))
-        handles.append(Line2D([0], [0], color='k', linestyle='-', label=r'\textbf{Black Box}'))
-        handles.append(Line2D([0], [0], color='k', linestyle='--', label=r'White Box'))
+        handles.append(Line2D([0], [0], color='k', linestyle='-', label=r'$\mathbf{\blacksquare}$'))
+        handles.append(Line2D([0], [0], color='k', linestyle='--', label=r'$\square$'))
         for i in range(n_per_col - 2):
             handles.append(placeholder_patch)
     l = axis_or_fig.legend(handles=handles, ncol=ncol if incl_box else ncol+1, **legend_kwargs)
@@ -489,7 +489,7 @@ def plot_learning_curves_metrics_subplots(results: ExperimentResults, filename: 
     plt.close(fig)
 
 
-def plot_correlation_between_methods_wb_vs_bb(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str):
+def plot_correlation_between_methods_wb_vs_bb(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str, use_last_error:bool = True):
     # plot mean final log metric against the al batch size
     ds_names = list({'_'.join(task_name.split('_')[:-1]) for task_name in results.task_names})
     ds_names.sort()
@@ -516,9 +516,12 @@ def plot_correlation_between_methods_wb_vs_bb(results: ExperimentResults, filena
                             figsize=(7.8+1, 7.8/len(wb_alg_names)/1.65+1), sharex='all', sharey='all',
                             gridspec_kw=dict(left=0.1, right=1, bottom=0.2, top=0.9, wspace=0.1, hspace=0.1))
 
-    last_errors = results.get_avg_errors(metric_name)
+    if use_last_error:
+        errors = results.get_last_errors(metric_name, use_log=True)
+    else:
+        errors = results.get_avg_errors(metric_name, use_log=True)
 
-    all_results = {alg_name: {task_name: np.mean(last_errors.results_dict[alg_name][task_name])
+    all_results = {alg_name: {task_name: np.mean(errors.results_dict[alg_name][task_name])
                               for task_name in task_names} for alg_name in results.alg_names}
 
     max_result = 0.0
@@ -551,33 +554,44 @@ def plot_correlation_between_methods_wb_vs_bb(results: ExperimentResults, filena
                                color=c[k], markeredgewidth=0.0)
             k += 1
 
-            #axs[i].set_ylabel(label_names_i[i], **axis_font)
-            #axs[i].set_xlabel(label_names_j[mapping[i]], **axis_font)
             axs[i].set_xlabel(labels[wb_alg_name], **axis_font)
 
+        # Compute average over all tasks for wb and bb alg
+        avg_result_x = np.mean([all_results[random_name][task_name] - all_results[wb_alg_name][task_name] for task_name in task_names])
+        avg_result_y = np.mean([all_results[random_name][task_name] - all_results[bb_alg_name][task_name] for task_name in task_names])
+        # Plot the average result with a star marker
+        # the marker is 1.5 the size and should be slightly transparent
+        # the marker should have black edges and not filled
+        # Use a * marker
+        axs[i].plot(avg_result_x, avg_result_y, '*', alpha=alpha, markersize=markersize*1.5,
+                    color="k", markeredgewidth=1.0, markeredgecolor='black', fillstyle='none')
+        # add a black marker to the center that is just a dot
+        axs[i].plot(avg_result_x, avg_result_y, '.', alpha=alpha, markersize=markersize*0.1,
+                    color="k")
+
     for i in range(len(wb_alg_names)):
-        axs[i].plot([min_result, max_result], [min_result, max_result], 'k-')
-        axs[i].plot([min_result, max_result], [0.0, 0.0], 'k--')
-        axs[i].plot([0.0, 0.0], [min_result, max_result*1.1], 'k--')
+        axs[i].plot([min_result, max_result], [min_result, max_result], 'k-', zorder=1)
+        axs[i].plot([min_result, max_result], [0.0, 0.0], 'k--', zorder=1)
+        axs[i].plot([0.0, 0.0], [min_result, max_result*1.1], 'k--', zorder=1)
 
         # Shade y > x in gray
         axs[i].fill_between([min_result - 5, max_result + 5], [min_result - 5, max_result + 5],
-                            [max_result + 5, max_result + 5], color='gray', alpha=0.2)
+                            [max_result + 5, max_result + 5], color='gray', alpha=0.2, zorder=1)
 
         # Set limits according to data
         axs[i].set_xlim(min_result-0.05, max_result+0.05)
         axs[i].set_ylim(min_result-0.05, max_result+0.05)
 
         # Put a little \blacksquare in the upper left corner with top left alignment
-        axs[i].text(min_result, max_result, r'$\blacksquare$', ha='left', va='top', fontsize=12, color='k', alpha=1)
-        axs[i].text(max_result, min_result, r'$\square$', ha='right', va='bottom', fontsize=12, color='k', alpha=1)
+        axs[i].text(min_result, max_result, r'$\blacksquare$', ha='left', va='top', fontsize=12, color='k', alpha=1, zorder=1)
+        axs[i].text(max_result, min_result, r'$\square$', ha='right', va='bottom', fontsize=12, color='k', alpha=1, zorder=1)
 
     # clear legend
     for i in range(len(wb_alg_names)):
         axs[i].legend().set_visible(False)
 
     handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='lower center', fontsize=fontsize, ncol=len(task_names) // 3,
+    fig.legend(handles, labels, title="Datasets", loc='lower center', fontsize=fontsize, ncol=len(task_names) // 3,
                bbox_to_anchor=(0.5, 1), bbox_transform=fig.transFigure)
 
     fig.supxlabel(r'$\square$ vs Uniform ($\uparrow$)', va="top", y=-.1, **axis_font)

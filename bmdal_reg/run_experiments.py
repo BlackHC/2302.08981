@@ -716,12 +716,14 @@ def run_experiments(exp_name: str, n_splits: int, run_config_list: RunConfigList
 
 def get_sklearn_configs() -> RunConfigList:
     lst = RunConfigList()
-    for prefix, create_model, mem_threshold, bs_mem_threshold in [
-        ("RF", sklearn_models.RandomForestRegressor, 1e-6, 1e-7),
-        ("VE-CAT", sklearn_models.CatBoostRegressor, 9e-6, 8e-8),
-        #("HGR", sklearn_models.HistGradientBoostingRegressor, 9e-7, 7e-8),
+    for prefix, create_model, n_models, mem_threshold, bs_mem_threshold in [
+        ("BagggingRF", sklearn_models.BaggingRandomForestRegressor, 10, 1e-5, 1e-7),
+        ("RF", sklearn_models.RandomForestRegressor, 100, 1e-6, 1e-7),
+        ("VE-CAT", sklearn_models.VECatBoostRegressor, 20, 9e-6, 8e-8),
+        #("HGR", sklearn_models.HistGradientBoostingRegressor, 10, 9e-7, 7e-8),
+        #("BaggingCAT", sklearn_models.BaggingCatBoostRegressor, 5, 9e-5, 8e-7),
     ]:
-        lst += get_bmdal_sklearn_predictions_configs(prefix=prefix, create_model=create_model,
+        lst += get_bmdal_sklearn_predictions_configs(prefix=prefix, create_model=create_model, n_models=n_models,
                                                      mem_threshold=mem_threshold, bs_mem_threshold=bs_mem_threshold)
     return lst
 
@@ -763,13 +765,19 @@ if __name__ == '__main__':
          'NN_bait-f-p_predictions', 'NN_bait-f-p_predictions_scale']
     )
 
-    # Sklearn experiments
-    run_experiments('sklearn', 20, get_sklearn_configs().distribute_jobs(job_index, num_jobs),
+    # ReLU batch size experiments
+    run_experiments('relu', 20, relu_bs_configs,
+                    batch_sizes_configs=[[2**(12-m)]*(2**m) for m in range(7) if m != 4],
+                    task_descs=[f'{2**(12-m)}x{2**m}' for m in range(7) if m != 4],
                     use_pool_for_normalization=use_pool_for_normalization)
 
-    # # ReLU experiments
-    run_experiments('relu', 20, get_relu_configs().distribute_jobs(job_index, num_jobs),
-                    use_pool_for_normalization=use_pool_for_normalization)
+    # # Sklearn experiments
+    # run_experiments('sklearn', 20, get_sklearn_configs().distribute_jobs(job_index, num_jobs),
+    #                 use_pool_for_normalization=use_pool_for_normalization)
+
+    # # # ReLU experiments
+    # run_experiments('relu', 20, get_relu_configs().distribute_jobs(job_index, num_jobs),
+    #                 use_pool_for_normalization=use_pool_for_normalization)
     # # SiLU experiments, without batch size experiments
     # run_experiments('silu', 20, get_silu_configs(),
     #                 use_pool_for_normalization=use_pool_for_normalization)

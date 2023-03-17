@@ -61,34 +61,31 @@ class ModelTrainer:
 
         if base_kernel is None:
             # train on random dataset
-            model: SklearnModel = self.create_model()
+            model: SklearnModel = self.create_model(self.n_models)
             n_train_missing = sum(task_split.al_batch_sizes)
             random_pool_idxs = pool_idxs[torch.randperm(len(task_split.pool_idxs), device=device)[:n_train_missing]]
             train_idxs = torch.cat([train_idxs, random_pool_idxs])
             train_timer.start()
             model.fit(data.tensors['X'][train_idxs].cpu().numpy(), data.tensors['y'][train_idxs].cpu().numpy(),
                       data.tensors['X'][valid_idxs].cpu().numpy(), data.tensors['y'][valid_idxs].cpu().numpy())
-            # fit_model(model, data, self.n_models, train_idxs, valid_idxs, **self.config)
             train_timer.pause()
-            results = [test_model(model, data, self.n_models, test_idxs)]
+            results = [test_model(model, data, 1, test_idxs)]
         else:
             results = []
 
-            model: SklearnModel = self.create_model()
+            model: SklearnModel = self.create_model(self.n_models)
             train_timer.start()
 
             model.fit(data.tensors['X'][train_idxs].cpu().numpy(), data.tensors['y'][train_idxs].cpu().numpy(),
                       data.tensors['X'][valid_idxs].cpu().numpy(), data.tensors['y'][valid_idxs].cpu().numpy())
-            # fit_model(model, data, self.n_models, train_idxs, valid_idxs, **self.config)
             train_timer.pause()
-            results.append(test_model(model, data, self.n_models, test_idxs))
+            results.append(test_model(model, data, 1, test_idxs))
 
             for al_step, al_batch_size in enumerate(task_split.al_batch_sizes):
                 print(
                     f'Performing AL step {al_step + 1}/{len(task_split.al_batch_sizes)} with n_train={len(train_idxs)}'
                     f', n_pool={len(pool_idxs)}, al_batch_size={al_batch_size}', flush=True)
-                # single_models = [model.get_single_model(i).to(al_device) for i in range(self.n_models)]
-                # single_models = model.to(al_device)
+
                 X = TensorFeatureData(data.tensors['X'].to(al_device))
                 feature_data = {'train': X[train_idxs],
                                 'pool': X[pool_idxs]}
@@ -112,13 +109,12 @@ class ModelTrainer:
                 # print(f'{train_idxs.shape[-1]=}')
                 # print(f'{pool_idxs.shape[-1]=}')
 
-                model = self.create_model()
+                model = self.create_model(self.n_models)
                 train_timer.start()
                 model.fit(data.tensors['X'][train_idxs].cpu().numpy(), data.tensors['y'][train_idxs].cpu().numpy(),
                           data.tensors['X'][valid_idxs].cpu().numpy(), data.tensors['y'][valid_idxs].cpu().numpy())
-                # fit_model(model, data, self.n_models, train_idxs, valid_idxs, **self.config)
                 train_timer.pause()
-                results.append(test_model(model, data, self.n_models, test_idxs))
+                results.append(test_model(model, data, 1, test_idxs))
 
         extended_config = utils.join_dicts(self.config, {'alg_name': self.alg_name, 'n_models': self.n_models})
 

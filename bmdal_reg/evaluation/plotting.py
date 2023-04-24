@@ -247,30 +247,25 @@ def plot_learning_curves_ax(ax: plt.Axes, results: ExperimentResults, metric_nam
             ax.plot(np.log(n_train), results_list, '--o', color='k', **plot_options)
             if with_random_final:
                 ax.plot([np.log(n_train[0]), np.log(n_train[-1])], [results_list[-1], results_list[-1]],
-                        '--', color='k', linewidth=0.5, **plot_options)
+                        '--', color='k', linewidth=1, zorder=1, **plot_options)
         else:
             color_idx = colors[get_color_index(alg_name.split('_')[1])]
             if "predictions" in alg_name:
                 # ax.plot(np.log(n_train), results_list, '-', marker=markers[pred_color_idx], color=colors[pred_color_idx],
-                ax.plot(np.log(n_train), results_list, '-', color=color_idx,
-                        **plot_options)
+                ax.plot(np.log(n_train), results_list, '-', color=color_idx, **plot_options)
             else:
                 # ax.plot(np.log(n_train), results_list, '--', marker=markers[color_idx], color=colors[color_idx],
                 ax.plot(np.log(n_train), results_list, '--', color=color_idx, linewidth=1., **plot_options)
 
-    # Plot white box average:
-    wb_learning_curve = np.mean(results.get_learning_curves_by_box(metric_name, white_box=True), axis=0)
-    n_train = np.asarray([256 * (i + 1) for i in range(len(wb_learning_curve))])
-    ax.plot(np.log(n_train), wb_learning_curve, '--s', color='gray', linewidth=3., **plot_options)
-
-    # Plot black box average:
-    bb_learning_curve = np.mean(results.get_learning_curves_by_box(metric_name, white_box=False), axis=0)
-    n_train = np.asarray([256 * (i + 1) for i in range(len(bb_learning_curve))])
-    ax.plot(np.log(n_train), bb_learning_curve, '-s', color='k', linewidth=3., **plot_options)
-
-    if with_random_final:
-        ax.plot([np.log(n_train[0]), np.log(n_train[-1])], [results_list[-1], results_list[-1]],
-                '--', color='k', linewidth=0.5, **plot_options)
+    # # Plot white box average:
+    # wb_learning_curve = np.mean(results.get_learning_curves_by_box(metric_name, white_box=True), axis=0)
+    # n_train = np.asarray([256 * (i + 1) for i in range(len(wb_learning_curve))])
+    # ax.plot(np.log(n_train), wb_learning_curve, '--s', color='gray', linewidth=3., **plot_options)
+    #
+    # # Plot black box average:
+    # bb_learning_curve = np.mean(results.get_learning_curves_by_box(metric_name, white_box=False), axis=0)
+    # n_train = np.asarray([256 * (i + 1) for i in range(len(bb_learning_curve))])
+    # ax.plot(np.log(n_train), bb_learning_curve, '-s', color='k', linewidth=3., **plot_options)
 
     if set_ticks_and_labels:
         xlocs = (np.log(256), np.log(512), np.log(1024), np.log(2048), np.log(4096))
@@ -343,15 +338,25 @@ def plot_learning_curves_ax_ci(ax: plt.Axes, results: ExperimentResults, metric_
 def flip(items, ncol):
     return itertools.chain(*[items[i::ncol] for i in range(ncol)])
 
+
 def plot_learning_curves(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str,
                          figsize: typing.Optional[typing.Tuple[float, float]] = None):
     # plot averaged learning curve for all tasks
     fig, axs = plt.subplots(figsize=figsize or (3.5, 3.5))
 
+    plot_learning_curves_ax(axs, results=results, metric_name=metric_name)
+    add_axis_or_figure_legend(axs, results, ncol=2, loc='lower left')
+
+    plt.tight_layout()
+    plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
+    utils.ensureDir(plot_name)
+    plt.savefig(plot_name)
+    plt.close(fig)
+
+
+def add_axis_or_figure_legend(axis_or_fig, results, ncol, **legend_kwargs):
     random_name = find_random_name(results)
     incl_box = random_name != 'NN_random'
-
-    plot_learning_curves_ax(axs, results=results, metric_name=metric_name)
 
     # Build custom legend
     # We want to separate by color and by line style. The color is determined by whether the alg_name.
@@ -359,40 +364,37 @@ def plot_learning_curves(results: ExperimentResults, filename: typing.Union[str,
     # List of handles
     handles = []
     # add transparent patch
+    placeholder_patch = Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label='')
     handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label='Acq. Function'))
-    all_labels = {get_latex_literature_name(alg_name.split('_')[1], "predictions" in alg_name, incl_box) for alg_name in results.alg_names}
+    all_labels = {get_latex_literature_name(alg_name.split('_')[1], "predictions" in alg_name, incl_box) for alg_name in
+                  results.alg_names}
     labels = set()
+    # labels per column: round up from all_labels / n_col
+    n_per_col = int(np.ceil(len(all_labels) / ncol))
     for i, alg_name in enumerate(results.alg_names):
         label = get_latex_literature_name(alg_name.split('_')[1], "predictions" in alg_name, incl_box)
         if label in labels:
             continue
-        if i % (len(all_labels)//2) == 0 and i != 0:
-            handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label=''))
+        if i % n_per_col == 0 and i != 0:
+            handles.append(placeholder_patch)
         labels.add(label)
 
         color = 'k' if alg_name == random_name else colors[get_color_index(alg_name.split('_')[1])]
         handle = Line2D([0], [0], color=color, linestyle='-', label=label)
         handles.append(handle)
 
-    if not incl_box:
-        if len(labels) % 2 != 0:
-            handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label=''))
-        handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label='Method'))
-        handles.append(Line2D([0], [0], color='k', linestyle='-', label=r'\textbf{Black Box}'))
-        handles.append(Line2D([0], [0], color='k', linestyle='--', label=r'White Box'))
-        # TODO: replace with for loop
-        handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label=''))
-        #handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label=''))
+    for i in range((n_per_col - len(labels) % n_per_col) % n_per_col):
+        handles.append(placeholder_patch)
 
-    l = axs.legend(handles=handles, ncol=2 if incl_box else 3, loc='lower left')
+    if not incl_box:
+        handles.append(Patch(facecolor='white', edgecolor='white', fill=False, linewidth=0., label='Method'))
+        handles.append(Line2D([0], [0], color='k', linestyle='-', label=r'$\mathbf{\blacksquare}$'))
+        handles.append(Line2D([0], [0], color='k', linestyle='--', label=r'$\square$'))
+        for i in range(n_per_col - 2):
+            handles.append(placeholder_patch)
+    l = axis_or_fig.legend(handles=handles, ncol=ncol if incl_box else ncol+1, **legend_kwargs)
     # Left align legend texts
     plt.setp(l.get_texts(), multialignment='left')
-
-    plt.tight_layout()
-    plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
-    utils.ensureDir(plot_name)
-    plt.savefig(plot_name)
-    plt.close(fig)
 
 
 def plot_multiple_learning_curves(results: ExperimentResults, filename: typing.Union[str, Path],
@@ -403,9 +405,8 @@ def plot_multiple_learning_curves(results: ExperimentResults, filename: typing.U
     for i, metric_name in enumerate(metric_names):
         plot_learning_curves_ax(axs[i], results, metric_name=metric_name)
 
-    #fig.legend(*axs[0].get_legend_handles_labels(), loc='upper center', bbox_to_anchor=(0.5, 0.15), ncol=4)
-    fig.legend(*axs[0].get_legend_handles_labels(), ncol=4, loc='lower center')
-    plt.tight_layout(rect=[0, 0.15, 1.0, 1.0])
+    add_axis_or_figure_legend(fig, results, ncol=4, loc='lower center')
+    plt.tight_layout(rect=[0, 0.2, 1.0, 1.0])
     plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
     utils.ensureDir(plot_name)
     plt.savefig(plot_name)
@@ -434,7 +435,7 @@ def plot_learning_curves_individual_subplots(results: ExperimentResults, filenam
     ds_names = list({'_'.join(task_name.split('_')[:-1]) for task_name in results.task_names})
     ds_names.sort()
 
-    fig, axs = plt.subplots(5, 3, figsize=(9, 12))
+    fig, axs = plt.subplots(5, 3, figsize=(9, 14))
 
     if len(ds_names) != 15:
         print(f'plot_batch_sizes_individual_subplots needs 15 data sets, but got {len(ds_names)} data sets')
@@ -459,8 +460,9 @@ def plot_learning_curves_individual_subplots(results: ExperimentResults, filenam
             ax.set_ylabel(f'mean log {get_latex_metric_name(metric_name)}', **axis_font)
         ax.set_title(get_latex_ds_name(ds_name))
 
-    fig.legend(*axs[4, 1].get_legend_handles_labels(), loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=4)
-    plt.tight_layout(rect=[0, 0.05, 1.0, 1.0])
+
+    add_axis_or_figure_legend(fig, results, loc='upper center', bbox_to_anchor=(0.5, 0.08), ncol=3)
+    plt.tight_layout(rect=[0, 0.08, 1.0, 1.0])
 
     plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
     utils.ensureDir(plot_name)
@@ -479,11 +481,130 @@ def plot_learning_curves_metrics_subplots(results: ExperimentResults, filename: 
         plot_learning_curves_ax(ax, results, metric_name)
 
     axs[-1, -1].axis('off')
-    fig.legend(*axs[0, 0].get_legend_handles_labels(), loc='center', bbox_to_anchor=(0.78, 0.18), ncol=2)
+    add_axis_or_figure_legend(fig, results, labels=labels, ncol=1, loc='center', bbox_to_anchor=(0.78, 0.18))
     plt.tight_layout()
     plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
     utils.ensureDir(plot_name)
     plt.savefig(plot_name)
+    plt.close(fig)
+
+
+def plot_correlation_between_methods_wb_vs_bb(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str, use_last_error:bool = True):
+    # plot mean final log metric against the al batch size
+    ds_names = list({'_'.join(task_name.split('_')[:-1]) for task_name in results.task_names})
+    ds_names.sort()
+    task_names = [ds_name + '_256x16' for ds_name in ds_names]
+
+    # find the alg_name ending in '_random'
+    random_name = find_random_name(results)
+
+    bb_alg_names = results.get_blackbox_alg_names()
+    wb_alg_names = results.get_whitebox_alg_names()
+
+    labels = {alg_name:
+                  get_latex_literature_name_new(alg_name, incl_box=False)
+              for alg_name in bb_alg_names+wb_alg_names}
+
+    # find a mapping from wb alg names to bb alg names
+    mapping_wb_alg_to_bx_alg = {}
+    for wb_alg_name in wb_alg_names:
+        for bb_alg_name in bb_alg_names:
+            if labels[wb_alg_name] == labels[bb_alg_name]:
+                mapping_wb_alg_to_bx_alg[wb_alg_name] = bb_alg_name
+
+    fig, axs = plt.subplots(1, len(wb_alg_names),
+                            figsize=(7.8+1, 7.8/len(wb_alg_names)/1.65+1), sharex='all', sharey='all',
+                            gridspec_kw=dict(left=0.1, right=1, bottom=0.2, top=0.9, wspace=0.1, hspace=0.1))
+
+    if use_last_error:
+        errors = results.get_last_errors(metric_name, use_log=True)
+    else:
+        errors = results.get_avg_errors(metric_name, use_log=True)
+
+    all_results = {alg_name: {task_name: np.mean(errors.results_dict[alg_name][task_name])
+                              for task_name in task_names} for alg_name in results.alg_names}
+
+    max_result = 0.0
+    min_result = 0.0
+    alpha = 0.7
+    markersize = 6
+
+    # generated using https://github.com/taketwo/glasbey
+    # c_list = [(0,0,0), (215,0,0), (140,60,255), (2,136,0), (0,172,199), (152,255,0), (255,127,209), (108,0,79), (255,165,48),
+    #      (0,0,157), (134,112,104), (0,73,66), (79,42,0), (0,253,207), (188,183,255)]
+    #c_list = [(174,20,20), (0,85,239), (0,143,0), (239,91,255), (225,149,10), (0,184,196), (120,78,120), (255,110,128),
+    #          (114,90,36), (148,155,255), (19,109,100), (145,180,125), (148,55,252), (202,16,130), (97,122,157)]
+    # c = [rgb_to_hex(c) for c in c_list]
+
+    c =["#000000", "#004949", "#009292", "#ff6db6", "#ffb6db",
+    "#490092", "#006ddb", "#b66dff", "#6db6ff", "#b6dbff",
+    "#920000", "#924900", "#db6d00", "#24ff24", "#ffff6d"]
+    #c = sns.color_palette("colorblind", len(ds_names))
+    for i, wb_alg_name in enumerate(wb_alg_names):
+        bb_alg_name = mapping_wb_alg_to_bx_alg[wb_alg_name]
+        k = 0
+        for task_name in task_names:
+            result_x = all_results[random_name][task_name] - all_results[wb_alg_name][task_name]
+            result_y = all_results[random_name][task_name] - all_results[bb_alg_name][task_name]
+            max_result = np.max([result_x, result_y, max_result])
+            min_result = np.min([result_x, result_y, min_result])
+
+            axs[i].plot(result_x, result_y, 'o', alpha=alpha,
+                               label=get_latex_task(task_name.split('_256')[0]), markersize=markersize,
+                               color=c[k], markeredgewidth=0.0)
+            k += 1
+
+            axs[i].set_xlabel(labels[wb_alg_name], **axis_font)
+
+        # Compute average over all tasks for wb and bb alg
+        avg_result_x = np.mean([all_results[random_name][task_name] - all_results[wb_alg_name][task_name] for task_name in task_names])
+        avg_result_y = np.mean([all_results[random_name][task_name] - all_results[bb_alg_name][task_name] for task_name in task_names])
+        # Plot the average result with a star marker
+        # the marker is 1.5 the size and should be slightly transparent
+        # the marker should have black edges and not filled
+        # Use a * marker
+        axs[i].plot(avg_result_x, avg_result_y, '*', alpha=alpha, markersize=markersize*1.5,
+                    color="k", markeredgewidth=1.0, markeredgecolor='black', fillstyle='none')
+        # add a black marker to the center that is just a dot
+        axs[i].plot(avg_result_x, avg_result_y, '.', alpha=alpha, markersize=markersize*0.1,
+                    color="k")
+
+    for i in range(len(wb_alg_names)):
+        axs[i].plot([min_result, max_result], [min_result, max_result], 'k-', zorder=1)
+        axs[i].plot([min_result, max_result], [0.0, 0.0], 'k--', zorder=1)
+        axs[i].plot([0.0, 0.0], [min_result, max_result*1.1], 'k--', zorder=1)
+
+        # Shade y > x in gray
+        axs[i].fill_between([min_result - 5, max_result + 5], [min_result - 5, max_result + 5],
+                            [max_result + 5, max_result + 5], color='gray', alpha=0.2, zorder=1)
+
+        # Set limits according to data
+        axs[i].set_xlim(min_result-0.05, max_result+0.05)
+        axs[i].set_ylim(min_result-0.05, max_result+0.05)
+
+        # Put a little \blacksquare in the upper left corner with top left alignment
+        axs[i].text(min_result, max_result, r'$\blacksquare$', ha='left', va='top', fontsize=12, color='k', alpha=1, zorder=1)
+        axs[i].text(max_result, min_result, r'$\square$', ha='right', va='bottom', fontsize=12, color='k', alpha=1, zorder=1)
+
+    # clear legend
+    for i in range(len(wb_alg_names)):
+        axs[i].legend().set_visible(False)
+
+    handles, labels = axs[0].get_legend_handles_labels()
+    fig.legend(handles, labels, title="Datasets", loc='lower center', fontsize=fontsize, ncol=len(task_names) // 3,
+               bbox_to_anchor=(0.5, 1), bbox_transform=fig.transFigure)
+
+    fig.supxlabel(r'$\square$ vs Uniform ($\uparrow$)', va="top", y=-.1, **axis_font)
+    fig.supylabel(r'$\blacksquare$ vs Uniform ($\uparrow$)', **axis_font)
+
+    # for i in range(len(alg_names_i)-1):
+    #      axs[i].axis('off')
+
+    plt.subplots_adjust(wspace=0.05, hspace=0.05)
+    plt.tight_layout()
+    plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
+    utils.ensureDir(plot_name)
+    plt.savefig(plot_name, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -515,12 +636,14 @@ def plot_correlation_between_methods(results: ExperimentResults, filename: typin
     # generated using https://github.com/taketwo/glasbey
     # c_list = [(0,0,0), (215,0,0), (140,60,255), (2,136,0), (0,172,199), (152,255,0), (255,127,209), (108,0,79), (255,165,48),
     #      (0,0,157), (134,112,104), (0,73,66), (79,42,0), (0,253,207), (188,183,255)]
-    c_list = [(174,20,20), (0,85,239), (0,143,0), (239,91,255), (225,149,10), (0,184,196), (120,78,120), (255,110,128),
-              (114,90,36), (148,155,255), (19,109,100), (145,180,125), (148,55,252), (202,16,130), (97,122,157)]
+    #c_list = [(174,20,20), (0,85,239), (0,143,0), (239,91,255), (225,149,10), (0,184,196), (120,78,120), (255,110,128),
+    #          (114,90,36), (148,155,255), (19,109,100), (145,180,125), (148,55,252), (202,16,130), (97,122,157)]
 
-    c = [rgb_to_hex(c) for c in c_list]
+    #c = [rgb_to_hex(c) for c in c_list]
 
-    random_name = find_random_name(results)
+    c = ["#000000", "#004949", "#009292", "#ff6db6", "#ffb6db",
+    "#490092", "#006ddb", "#b66dff", "#6db6ff", "#b6dbff",
+    "#920000", "#924900", "#db6d00", "#24ff24", "#ffff6d"]
 
     for i in range(len(alg_names)):
         for j in range(i+1, len(alg_names)):

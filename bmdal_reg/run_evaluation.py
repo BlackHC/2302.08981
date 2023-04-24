@@ -31,35 +31,59 @@ LIT_RESULTS_NN_PREDICTIONS_DICT = {
 # Create a dictionary of LIT_RESULTS_VE_CAT_PREDICTIONS with the corresponding labels
 LIT_RESULTS_VE_CAT_PREDICTIONS_DICT = {
     "VE-CAT_random": "Uniform",
-    "VE-CAT_maxdiag_predictions-1": r"$\blacksquare$ BALD",
-    "VE-CAT_maxdet-p_predictions-1": r"$\blacksquare$ BatchBALD",
-    'VE-CAT_bait-f-p_predictions-1': r'$\blacksquare$ BAIT',
-    "VE-CAT_fw-p_predictions-1": r"$\blacksquare$ ACS-FW",
-    "VE-CAT_maxdist-p_predictions-1": r"$\blacksquare$ Core-Set/\\FF-Active",
-    "VE-CAT_kmeanspp-p_predictions-1": r"$\blacksquare$ BADGE",
-    "VE-CAT_lcmd-tp_predictions-1": r"$\blacksquare$ LCMD",
+    "VE-CAT_maxdiag_predictions-20": r"$\blacksquare$ BALD",
+    "VE-CAT_maxdet-p_predictions-20": r"$\blacksquare$ BatchBALD",
+    'VE-CAT_bait-f-p_predictions-20': r'$\blacksquare$ BAIT',
+    "VE-CAT_fw-p_predictions-20": r"$\blacksquare$ ACS-FW",
+    "VE-CAT_maxdist-p_predictions-20": r"$\blacksquare$ Core-Set/\\FF-Active",
+    "VE-CAT_kmeanspp-p_predictions-20": r"$\blacksquare$ BADGE",
+    "VE-CAT_lcmd-tp_predictions-20": r"$\blacksquare$ LCMD",
 }
 
 # Create a dictionary of LIT_RESULTS_VE_CAT_PREDICTIONS with the corresponding labels
 LIT_RESULTS_RF_PREDICTIONS_DICT = {
     "RF_random": "Uniform",
-    "RF_maxdiag_predictions-1": r"$\blacksquare$ BALD",
-    "RF_maxdet-p_predictions-1": r"$\blacksquare$ BatchBALD",
-    'RF_bait-f-p_predictions-1': r'$\blacksquare$ BAIT',
-    "RF_fw-p_predictions-1": r"$\blacksquare$ ACS-FW",
-    "RF_maxdist-p_predictions-1": r"$\blacksquare$ Core-Set/\\FF-Active",
-    "RF_kmeanspp-p_predictions-1": r"$\blacksquare$ BADGE",
-    "RF_lcmd-tp_predictions-1": r"$\blacksquare$ LCMD",
+    "RF_maxdiag_predictions-100": r"$\blacksquare$ BALD",
+    "RF_maxdet-p_predictions-100": r"$\blacksquare$ BatchBALD",
+    'RF_bait-f-p_predictions-100': r'$\blacksquare$ BAIT',
+    "RF_fw-p_predictions-100": r"$\blacksquare$ ACS-FW",
+    "RF_maxdist-p_predictions-100": r"$\blacksquare$ Core-Set/\\FF-Active",
+    "RF_kmeanspp-p_predictions-100": r"$\blacksquare$ BADGE",
+    "RF_lcmd-tp_predictions-100": r"$\blacksquare$ LCMD",
+}
+
+# Create a dictionary of LIT_RESULTS_VE_CAT_PREDICTIONS with the corresponding labels
+LIT_RESULTS_BAGGING_RF_PREDICTIONS_DICT = {
+    "RF_random": "Uniform",
+    "BagggingRF_maxdiag_predictions-10": r"$\blacksquare$ BALD",
+    "BagggingRF_maxdet-p_predictions-10": r"$\blacksquare$ BatchBALD",
+    'BagggingRF_bait-f-p_predictions-10': r'$\blacksquare$ BAIT',
+    "BagggingRF_fw-p_predictions-10": r"$\blacksquare$ ACS-FW",
+    "BagggingRF_maxdist-p_predictions-10": r"$\blacksquare$ Core-Set/\\FF-Active",
+    "BagggingRF_kmeanspp-p_predictions-10": r"$\blacksquare$ BADGE",
+    "BagggingRF_lcmd-tp_predictions-10": r"$\blacksquare$ LCMD",
+}
+
+# Create a dictionary of LIT_RESULTS_VE_CAT_PREDICTIONS with the corresponding labels
+LIT_RESULTS_BAGGING_CAT_PREDICTIONS_DICT = {
+    "BaggingCAT_random": "Uniform",
+    "BaggingCAT_maxdiag_predictions-5": r"$\blacksquare$ BALD",
+    "BaggingCAT_maxdet-p_predictions-5": r"$\blacksquare$ BatchBALD",
+    'BaggingCAT_bait-f-p_predictions-5': r'$\blacksquare$ BAIT',
+    "BaggingCAT_fw-p_predictions-5": r"$\blacksquare$ ACS-FW",
+    "BaggingCAT_maxdist-p_predictions-5": r"$\blacksquare$ Core-Set/\\FF-Active",
+    "BaggingCAT_kmeanspp-p_predictions-5": r"$\blacksquare$ BADGE",
+    "BaggingCAT_lcmd-tp_predictions-5": r"$\blacksquare$ LCMD",
 }
 
 def plot_all(results: ExperimentResults, alg_names: typing.List[str], with_batch_size_plots: bool = True,
              literature_results_dict: typing.Dict[str, str] = LIT_RESULTS_NN_BMDAL_DICT):
     selected_results = results.filter_alg_names(alg_names)
     literature_results = results.filter_alg_names(list(literature_results_dict.keys()))
-    literature_names = list(literature_results_dict.values())
 
     print('Generating tables...')
     save_latex_table_all_algs(results, 'table_all_algs.txt')
+    save_latex_table_all_algs(selected_results, 'table_selected_algs.txt')
     save_latex_table_data_sets(selected_results, 'table_data_sets.txt')
     save_latex_table_data_sets(selected_results, 'table_data_sets_lasterror.txt', use_last_error=True)
     save_latex_table_data_sets(selected_results, 'table_data_sets_nolog.txt', use_log=False)
@@ -69,12 +93,10 @@ def plot_all(results: ExperimentResults, alg_names: typing.List[str], with_batch
     print('Creating learning curve plots...')
     plot_learning_curves_metrics_subplots(results=literature_results, filename='learning_curves_metrics.pdf')
     plot_multiple_learning_curves(results=selected_results, filename='learning_curves_rmse_maxe.pdf',
-                                  metric_names=['rmse', 'maxe'])
+                                 metric_names=['rmse', 'maxe'])
     plot_multiple_learning_curves(results=selected_results, filename='learning_curves_q95_q99.pdf',
                                   metric_names=['q95', 'q99'])
     for metric_name in metric_names:
-        plot_learning_curves(results=selected_results, filename=f'learning_curves_{metric_name}.pdf',
-                             metric_name=metric_name)
         plot_learning_curves(results=literature_results, filename=f'learning_curves_literature_{metric_name}.pdf',
                              metric_name=metric_name, figsize=(6, 5))
         plot_learning_curves(results=literature_results, filename=f'learning_curves_literature_wide_{metric_name}.pdf',
@@ -94,34 +116,37 @@ def plot_all(results: ExperimentResults, alg_names: typing.List[str], with_batch
 
     print('Creating correlation plots...')
     for metric_name in metric_names:
-        plot_correlation_between_methods(results=selected_results,
-                                         filename=f'correlation_between_methods_{metric_name}.pdf',
-                                         metric_name=metric_name)
-    print('Creating individual learning curve plots...')
-    for metric_name in ['mae', 'rmse', 'q95', 'q99', 'maxe']:
-        plot_learning_curves_individual(results=selected_results, metric_name=metric_name)
-
-    if with_batch_size_plots:
-        # batch size plots
-        print('Creating batch size plots...')
-        plot_batch_sizes_metrics_subplots(results=selected_results, filename='batch_sizes_metrics.pdf')
-        plot_multiple_batch_sizes(results=selected_results, filename='batch_sizes_rmse_maxe.pdf',
-                                  metric_names=['rmse', 'maxe'])
-        plot_multiple_batch_sizes(results=selected_results, filename='batch_sizes_q95_q99.pdf',
-                                  metric_names=['q95', 'q99'])
-        for metric_name in metric_names:
-            plot_batch_sizes(results=selected_results, filename=f'batch_sizes_{metric_name}.pdf',
-                             metric_name=metric_name, figsize=(5, 5))
-            plot_batch_sizes(results=selected_results, filename=f'batch_sizes_wide_{metric_name}.pdf',
-                             metric_name=metric_name, figsize=(6, 3.5))
-        print('Creating individual batch size plots with subplots...')
-        for metric_name in ['mae', 'rmse', 'q95', 'q99', 'maxe']:
-            plot_batch_sizes_individual_subplots(results=selected_results,
-                                                 filename=f'batch_sizes_individual_{metric_name}.pdf',
-                                                 metric_name=metric_name)
-        print('Creating individual batch size plots...')
-        for metric_name in ['mae', 'rmse', 'q95', 'q99', 'maxe']:
-            plot_batch_sizes_individual(results=selected_results, metric_name=metric_name)
+        plot_correlation_between_methods_wb_vs_bb(results=selected_results,
+                                         filename=f'last_correlation_between_bb_vs_wb_methods_{metric_name}.pdf',
+                                         metric_name=metric_name, use_last_error=True)
+        plot_correlation_between_methods_wb_vs_bb(results=selected_results,
+                                         filename=f'avg_correlation_between_bb_vs_wb_methods_{metric_name}.pdf',
+                                         metric_name=metric_name, use_last_error=False)
+    # print('Creating individual learning curve plots...')
+    # for metric_name in ['mae', 'rmse', 'q95', 'q99', 'maxe']:
+    #     plot_learning_curves_individual(results=selected_results, metric_name=metric_name)
+    #
+    # if with_batch_size_plots:
+    #     # batch size plots
+    #     print('Creating batch size plots...')
+    #     plot_batch_sizes_metrics_subplots(results=selected_results, filename='batch_sizes_metrics.pdf')
+    #     plot_multiple_batch_sizes(results=selected_results, filename='batch_sizes_rmse_maxe.pdf',
+    #                               metric_names=['rmse', 'maxe'])
+    #     plot_multiple_batch_sizes(results=selected_results, filename='batch_sizes_q95_q99.pdf',
+    #                               metric_names=['q95', 'q99'])
+    #     for metric_name in metric_names:
+    #         plot_batch_sizes(results=selected_results, filename=f'batch_sizes_{metric_name}.pdf',
+    #                          metric_name=metric_name, figsize=(5, 5))
+    #         plot_batch_sizes(results=selected_results, filename=f'batch_sizes_wide_{metric_name}.pdf',
+    #                          metric_name=metric_name, figsize=(6, 3.5))
+    #     print('Creating individual batch size plots with subplots...')
+    #     for metric_name in ['mae', 'rmse', 'q95', 'q99', 'maxe']:
+    #         plot_batch_sizes_individual_subplots(results=selected_results,
+    #                                              filename=f'batch_sizes_individual_{metric_name}.pdf',
+    #                                              metric_name=metric_name)
+    #     print('Creating individual batch size plots...')
+    #     for metric_name in ['mae', 'rmse', 'q95', 'q99', 'maxe']:
+    #         plot_batch_sizes_individual(results=selected_results, metric_name=metric_name)
 
 
 if __name__ == '__main__':
@@ -144,28 +169,48 @@ if __name__ == '__main__':
         results.analyze_eff_dims()
 
         if exp_name == 'sklearn':
-            try:
-                # filter results to only contain algs with RF_ as prefix
-                rf_results = results.filter_alg_names(list(filter(lambda alg_name: alg_name.startswith('RF_'), results.alg_names)))
-                # selected algs for ReLU (best ones in terms of RMSE after ignoring slow ones, see table in the paper)
-                alg_names_sklearn = list(LIT_RESULTS_RF_PREDICTIONS_DICT.keys())
-                plot_all(rf_results, alg_names=alg_names_sklearn, literature_results_dict=LIT_RESULTS_RF_PREDICTIONS_DICT, with_batch_size_plots=False)
-            except:
-                traceback.print_exc()
+            # try:
+            #     # filter results to only contain algs with RF_ as prefix
+            #     rf_results = results.filter_alg_names(list(filter(lambda alg_name: alg_name.startswith('RF_'), results.alg_names)))
+            #     # selected algs for ReLU (best ones in terms of RMSE after ignoring slow ones, see table in the paper)
+            #     alg_names_sklearn = list(LIT_RESULTS_RF_PREDICTIONS_DICT.keys())
+            #     plot_all(rf_results, alg_names=alg_names_sklearn, literature_results_dict=LIT_RESULTS_RF_PREDICTIONS_DICT, with_batch_size_plots=False)
+            # except:
+            #     traceback.print_exc()
+
+            # try:
+            #     # filter results to only contain algs with VE-CAT_ as prefix
+            #     rf_results = results.filter_alg_names(list(filter(lambda alg_name: alg_name.startswith('VE-CAT_'), results.alg_names)))
+            #     rf_results.exp_name = 'sklearn-ve-cat'
+            #     alg_names_sklearn = list(LIT_RESULTS_VE_CAT_PREDICTIONS_DICT.keys())
+            #     plot_all(rf_results, alg_names=alg_names_sklearn, literature_results_dict=LIT_RESULTS_VE_CAT_PREDICTIONS_DICT, with_batch_size_plots=False)
+            # except:
+            #     traceback.print_exc()
 
             try:
                 # filter results to only contain algs with VE-CAT_ as prefix
-                rf_results = results.filter_alg_names(list(filter(lambda alg_name: alg_name.startswith('VE-CAT_'), results.alg_names)))
-                rf_results.exp_name = 'sklearn-ve-cat'
-                alg_names_sklearn = list(LIT_RESULTS_VE_CAT_PREDICTIONS_DICT.keys())
-                plot_all(rf_results, alg_names=alg_names_sklearn, literature_results_dict=LIT_RESULTS_VE_CAT_PREDICTIONS_DICT, with_batch_size_plots=False)
+                alg_names_list=list(filter(lambda alg_name: alg_name.startswith('BagggingRF_'), results.alg_names))
+                alg_names_list.remove('BagggingRF_random')
+                alg_names_list.append('RF_random')
+                rf_results = results.filter_alg_names(alg_names_list)
+                rf_results.exp_name = 'sklearn-bagging-rf'
+                alg_names_sklearn = list(LIT_RESULTS_BAGGING_RF_PREDICTIONS_DICT.keys())
+                plot_all(rf_results, alg_names=alg_names_sklearn, literature_results_dict=LIT_RESULTS_BAGGING_RF_PREDICTIONS_DICT, with_batch_size_plots=True)
             except:
                 traceback.print_exc()
+
+            # try:
+            #     # filter results to only contain algs with VE-CAT_ as prefix
+            #     rf_results = results.filter_alg_names(list(filter(lambda alg_name: alg_name.startswith('BaggingCAT_'), results.alg_names)))
+            #     rf_results.exp_name = 'sklearn-bagging-cat'
+            #     alg_names_sklearn = list(LIT_RESULTS_BAGGING_CAT_PREDICTIONS_DICT.keys())
+            #     plot_all(rf_results, alg_names=alg_names_sklearn, literature_results_dict=LIT_RESULTS_BAGGING_CAT_PREDICTIONS_DICT, with_batch_size_plots=False)
+            # except:
+            #     traceback.print_exc()
         if exp_name == 'relu':
             # selected algs for ReLU (best ones in terms of RMSE after ignoring slow ones, see table in the paper)
             alg_names_relu = list(LIT_RESULTS_NN_BMDAL_DICT.keys()) + list(LIT_RESULTS_NN_PREDICTIONS_DICT.keys())
-            plot_all(results, alg_names=alg_names_relu, with_batch_size_plots=False, literature_results_dict=LIT_RESULTS_NN_BMDAL_DICT | LIT_RESULTS_NN_PREDICTIONS_DICT)
-
+            plot_all(results, alg_names=alg_names_relu, with_batch_size_plots=True, literature_results_dict=LIT_RESULTS_NN_BMDAL_DICT | LIT_RESULTS_NN_PREDICTIONS_DICT)
 
         print('Finished plotting')
         print()

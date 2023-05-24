@@ -234,6 +234,9 @@ def get_bmdal_predictions_configs(**kwargs) -> RunConfigList:
 
     mem_threshold = 9e-6
 
+    lst.append(1e-6, ModelTrainer(f'NN_random-{n_models}', selection_method='random',
+                                  base_kernel='linear', n_models=n_models, kernel_transforms=[], **kwargs))
+
     # bait kernel comparison
     for fb_mode, overselection_factor in [('f', 1.0)]: #[('f', 1.0), ('fb', 2.0)]:
         # lst.append(mem_threshold, ModelTrainer(f'NN_bait-{fb_mode}-p_predictions-{n_models}_scale', selection_method='bait',

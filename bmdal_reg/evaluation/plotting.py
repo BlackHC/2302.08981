@@ -53,6 +53,8 @@ def plot_ensemble_sizes_ax(ax: plt.Axes, results: ExperimentResults, metric_name
     last_errors = results.get_last_errors(metric_name)
     alg_names = []
     for full_alg_name in results.alg_names:
+        if "predictions" not in full_alg_name and "random" not in full_alg_name:
+            continue
         parts = full_alg_name.split('-')
         try:
             int(parts[-1])

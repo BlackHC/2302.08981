@@ -61,8 +61,20 @@ class ExperimentResults:
             lambda split_dict: np.mean([sr['kernel_time']['total'] + sr['selection_time']['total']
                                         for sr in split_dict['al_stats']]))
 
+    def find_random_names(self):
+        # TODO: this is problematic because non-NN algs use {model_type}_random-{ensemble_size}
+        random_algs = [alg_name for alg_name in self.alg_names if '_random' in alg_name]
+        return random_algs
+
     def find_random_name(self):
-        return [alg_name for alg_name in self.alg_names if alg_name.endswith('_random')][0]
+        # TODO: this is problematic because non-NN algs use {model_type}_random-{ensemble_size}
+        random_algs = self.find_random_names()
+        if len(random_algs) > 1:
+            raise ValueError(f"Found more than one random baseline: {random_algs}")
+        if random_algs:
+            return random_algs[0]
+        #print(f'Could not find random alg_name in {self.alg_names}.')
+        return None
 
     def get_learning_curves_by_box(self, key: str, white_box:bool = True, use_log: bool = True) -> np.ndarray:
         """
@@ -132,6 +144,12 @@ class ExperimentResults:
         common_alg_names = [alg_name for alg_name, alg_dict in self.results_dict.items()
                             if set(alg_dict.keys()) == set(self.task_names)]
         return self.filter_alg_names(common_alg_names)
+
+    def filter_alg_prefix(self, prefix) -> 'ExperimentResults':
+        return self.filter_alg_names([alg_name for alg_name in self.alg_names if alg_name.startswith(prefix)])
+
+    def filter_alg_suffix(self, suffix) -> 'ExperimentResults':
+        return self.filter_alg_names([alg_name for alg_name in self.alg_names if alg_name.endswith(suffix)])
 
     def analyze_errors(self):
         n_steps = 0
@@ -607,3 +625,33 @@ def print_avg_results(exp_results: ExperimentResults, relative_to: typing.Option
         print()
 
     print('\n\n')
+
+
+def remove_ensemble_info_from_alg_name(alg_name: str | None):
+    """
+    Ensembles use -{ensemble_size} as suffix. We want to strip that.
+    """
+    if alg_name is None:
+        return None
+
+    # check if there is a - in the alg_name
+    if '-' in alg_name:
+        # split the alg_name at the -
+        alg_name_split = alg_name.split('-')
+        # check if the last part is an integer
+        if alg_name_split[-1].isdigit():
+            # remove the last part
+            alg_name_split = alg_name_split[:-1]
+        # join the alg_name_split with a -
+        return '-'.join(alg_name_split)
+    else:
+        return alg_name
+
+
+def remove_ensemble_info_from_keys(d):
+    # use the remove_ensemble_info_from_alg_name function to remove the ensemble info from the keys
+    return {remove_ensemble_info_from_alg_name(k): v for k, v in d.items()}
+
+
+def remove_ensemble_info_from_list(l):
+    return [remove_ensemble_info_from_alg_name(k) for k in l]

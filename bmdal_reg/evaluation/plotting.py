@@ -5,6 +5,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from matplotlib.text import Text
 
+
 #matplotlib.use('Agg')
 matplotlib.use('pdf')
 matplotlib.rcParams.update({
@@ -42,11 +43,131 @@ def rgb_to_hex(rgb):
 
 
 colors = [u'#a06010', u'#d62728', u'#e377c2', u'#2ca02c', u'#ff7f0e', u'#9467bd', u'#17becf', u'#7f7f7f',
-          u'#bcbd22', u'#1f77b4']
-markers = ['^', 'v', '<', '>', 'P', 'D', 's', 'v']
+          u'#bcbd22', u'#1f77b4', u'#8c564b', u'#e377c2']
+markers = ['^', 'v', '<', '>', 'P', 'D', 's', 'v', 'o', 'X', 'd', 'p', 'h', '8', 'H', 'x', '1', '2', '3', '4', 's', 'p',]
+
+
+def plot_ensemble_sizes_ax(ax: plt.Axes, results: ExperimentResults, metric_name: str, set_ticks_and_labels: bool = True,
+                        default_ensemble_size: int | None = None,
+                        **plot_options):
+    last_errors = results.get_last_errors(metric_name)
+    alg_names = []
+    for full_alg_name in results.alg_names:
+        parts = full_alg_name.split('-')
+        try:
+            int(parts[-1])
+        except:
+            continue
+        alg_name = '-'.join(parts[:-1])
+        alg_names.append(alg_name)
+    alg_names = list(set(alg_names))
+
+    all_ds_names = list({task_name for task_name in results.task_names if task_name.endswith('_256x16')})
+    # https://stackoverflow.com/questions/42086276/get-default-line-colour-cycle
+    # default matplotlib colors:
+    # colors = [u'#1f77b4', u'#ff7f0e', u'#2ca02c', u'#d62728', u'#9467bd', u'#8c564b', u'#e377c2', u'#7f7f7f',
+    #           u'#bcbd22', u'#17becf']
+
+    plot_options = utils.update_dict(dict(alpha=1.0, markersize=3.5), plot_options)
+
+    random_names = {remove_ensemble_info_from_alg_name(name) for name in find_random_names(results)}
+    assert len(random_names) <= 1, random_names
+    random_name = random_names.pop() if random_names else None
+
+    for alg_name in set(alg_names):
+        # print(alg_name)
+        ds_names = set(all_ds_names)
+        keys = []
+        ensemble_sizes = []
+        for key in results.alg_names:
+            if not key.startswith(alg_name):
+                continue
+            parts = key.split('-')
+
+            try:
+                ensemble_size = int(parts[-1])
+            except:
+                continue
+
+            # TODO: remove this once all experiments have finished.
+            if ensemble_size > 256:
+                continue
+
+            ds_names &= set(results.results_dict[key].keys())
+            keys.append(key)
+            ensemble_sizes.append(ensemble_size)
+
+        if (missing_ds := set(all_ds_names) - ds_names):
+            print("Missing datasets for alg", alg_name, ":", missing_ds)
+
+        ensemble_sizes = np.array(list(ensemble_sizes))
+        idxs = np.argsort(ensemble_sizes)
+        ensemble_sizes = ensemble_sizes[idxs]
+        # print(ensemble_sizes)
+
+        results_list = [[np.mean(last_errors.results_dict[alg_key][ds_key]) for ds_key in ds_names
+                         if ds_key in last_errors.results_dict[alg_key]] for alg_key in keys]
+        task_stds = [[np.std(last_errors.results_dict[alg_key][ds_key], axis=0) /
+                     max(np.sqrt(len(last_errors.results_dict[alg_key][ds_key]) - 1), 1) for ds_key in ds_names
+                      if ds_key in last_errors.results_dict[alg_key]] for alg_key in keys]
+        alg_stds = np.asarray([np.linalg.norm(task_stds[i]) / len(task_stds[i]) for i in idxs])
+        log_means = np.asarray([np.mean(results_list[i]) for i in idxs])
+        # print(alg_stds.shape, log_means.shape)
+
+        # if len(ds_batch_sizes) == 0:
+        #     raise ValueError(f'No data set results available for alg {alg_name}')
+
+        # if alg_name == random_name:
+        #     minus = np.mean(log_means, axis=1) - np.linalg.norm(alg_stds, axis=1) / len(alg_stds)
+        #     plus = np.mean(log_means, axis=1) + np.linalg.norm(alg_stds, axis=1) / len(alg_stds)
+        #     ax.fill_between(ensemble_sizes, minus, plus, facecolor=color, alpha=0.2)
+        #     if "predictions" in alg_name:
+        #         ax.plot(ensemble_sizes, np.mean(log_means, axis=1), '-', marker=marker,
+        #                 color=color, **plot_options)
+        #     else:
+        #
+        #     minus = np.mean(log_means) - np.linalg.norm(alg_stds) / len(alg_stds)
+        #     plus = np.mean(log_means) + np.linalg.norm(alg_stds) / len(alg_stds)
+        #     ax.axhspan(minus, plus, alpha=0.2, facecolor='k', edgecolor=None)
+        #     ax.axhline(y=np.mean(log_means), ls='--', color='k',
+        #                 label=get_latex_selection_method(alg_name.split('_')[1], "predictions" in alg_name))
+        # else:
+        if alg_name == random_name:
+            color = 'k'
+            marker = 'x'
+        else:
+            alg_idx = get_color_index(alg_name.split('_')[1])
+            color = colors[alg_idx]
+            marker = markers[alg_idx]
+
+        # minus = np.mean(log_means, axis=1) - np.linalg.norm(alg_stds, axis=1) / len(alg_stds)
+        # plus = np.mean(log_means, axis=1) + np.linalg.norm(alg_stds, axis=1) / len(alg_stds)
+        minus = log_means - alg_stds
+        plus = log_means + alg_stds
+        ax.fill_between(ensemble_sizes, minus, plus, facecolor=color, alpha=0.2)
+        if "predictions" in alg_name:
+            ax.plot(ensemble_sizes, log_means, '-', marker=marker,
+                    color=color, **plot_options)
+        else:
+            ax.plot(ensemble_sizes, log_means, '--', linewidth=1.,
+                    marker=marker, color=color, **plot_options)
+
+    # set x axis to log scale
+    ax.set_xscale('log', base=2)
+
+    if set_ticks_and_labels:
+        # xlocs = [np.log(64), np.log(128), np.log(256), np.log(512), np.log(1024), np.log(2048), np.log(4096)]
+        # xlabels = ('64', '128', '256', '512', '1024', '2048', '4096')
+        #
+        # ax.set_xticks(xlocs)
+        # ax.set_xticklabels(xlabels)
+
+        ax.set_xlabel(r'Ensemble size', **axis_font)
+        ax.set_ylabel(r'mean log ' + f'{get_latex_metric_name(metric_name)}', **axis_font)
 
 
 def plot_batch_sizes_ax(ax: plt.Axes, results: ExperimentResults, metric_name: str, set_ticks_and_labels: bool = True,
+                           default_ensemble_size: int | None = None,
                         **plot_options):
     last_errors = results.get_last_errors(metric_name)
     ds_names = list({'_'.join(task_name.split('_')[:-1]) for task_name in results.task_names})
@@ -56,11 +177,10 @@ def plot_batch_sizes_ax(ax: plt.Axes, results: ExperimentResults, metric_name: s
     # colors = [u'#1f77b4', u'#ff7f0e', u'#2ca02c', u'#d62728', u'#9467bd', u'#8c564b', u'#e377c2', u'#7f7f7f',
     #           u'#bcbd22', u'#17becf']
 
-    color_idx = 0
-
     plot_options = utils.update_dict(dict(alpha=1.0, markersize=3.5), plot_options)
 
     random_name = find_random_name(results)
+    # print(random_name, results.alg_names)
 
     for alg_name in results.alg_names:
         log_means = []
@@ -96,14 +216,21 @@ def plot_batch_sizes_ax(ax: plt.Axes, results: ExperimentResults, metric_name: s
             plus = np.mean(log_means) + np.linalg.norm(alg_stds) / len(alg_stds)
             ax.axhspan(minus, plus, alpha=0.2, facecolor='k', edgecolor=None)
             ax.axhline(y=np.mean(log_means), ls='--', color='k',
-                        label=get_latex_selection_method(alg_name.split('_')[1], "predictions" in alg_name))
+                         label=get_latex_selection_method(alg_name.split('_')[1], "predictions" in alg_name))
         else:
+            alg_idx = get_color_index(alg_name.split('_')[1])
+            color = colors[alg_idx]
+            marker = markers[alg_idx]
+
             minus = np.mean(log_means, axis=0) - np.linalg.norm(alg_stds, axis=0) / len(alg_stds)
             plus = np.mean(log_means, axis=0) + np.linalg.norm(alg_stds, axis=0) / len(alg_stds)
-            ax.fill_between(np.log(ds_batch_sizes[0]), minus, plus, facecolor=colors[color_idx], alpha=0.2)
-            ax.plot(np.log(ds_batch_sizes[0]), np.mean(log_means, axis=0), '--', marker=markers[color_idx],
-                    label=get_latex_selection_method(alg_name.split('_')[1], "predictions" in alg_name), color=colors[color_idx], **plot_options)
-            color_idx += 1
+            ax.fill_between(np.log(ds_batch_sizes[0]), minus, plus, facecolor=color, alpha=0.2)
+            if "predictions" in alg_name:
+                ax.plot(np.log(ds_batch_sizes[0]), np.mean(log_means, axis=0), '-', marker=marker,
+                        color=color, **plot_options)
+            else:
+                ax.plot(np.log(ds_batch_sizes[0]), np.mean(log_means, axis=0), '--', linewidth=1.,
+                        marker=marker, color=color, **plot_options)
 
     if set_ticks_and_labels:
         xlocs = [np.log(64), np.log(128), np.log(256), np.log(512), np.log(1024), np.log(2048), np.log(4096)]
@@ -123,7 +250,7 @@ def plot_batch_sizes(results: ExperimentResults, filename: typing.Union[str, Pat
 
     plot_batch_sizes_ax(ax, results, metric_name)
 
-    ax.legend()
+    add_axis_or_figure_legend(ax, results, ncol=2, loc='upper left')
     plt.tight_layout()
     plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
     utils.ensureDir(plot_name)
@@ -131,15 +258,32 @@ def plot_batch_sizes(results: ExperimentResults, filename: typing.Union[str, Pat
     plt.close(fig)
 
 
+def plot_ensemble_sizes(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str,
+                     figsize: typing.Optional[typing.Tuple[float, float]] = None, default_ensemble_size: int | None=None):
+    # plot mean final log metric against the al batch size
+    fig, ax = plt.subplots(figsize=figsize or (4, 4))
+
+    plot_ensemble_sizes_ax(ax, results, metric_name, default_ensemble_size=default_ensemble_size)
+
+    add_axis_or_figure_legend(ax, results, ncol=3, loc='upper left')
+    plt.tight_layout()
+    plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
+    utils.ensureDir(plot_name)
+    plt.savefig(plot_name)
+    plt.close(fig)
+
+
+
 def plot_multiple_batch_sizes(results: ExperimentResults, filename: typing.Union[str, Path],
                               metric_names: typing.List[str]):
     # plot averaged learning curve for all tasks
-    fig, axs = plt.subplots(1, len(metric_names), figsize=(7, 4))
+    fig, axs = plt.subplots(1, len(metric_names), figsize=(7, 7/1.62))
 
     for i, metric_name in enumerate(metric_names):
         plot_batch_sizes_ax(axs[i], results, metric_name)
 
-    fig.legend(*axs[0].get_legend_handles_labels(), loc='upper center', bbox_to_anchor=(0.5, 0.15), ncol=4)
+    #fig.legend(*axs[0].get_legend_handles_labels(), loc='upper center', bbox_to_anchor=(0.5, 0.15), ncol=4)
+    add_axis_or_figure_legend(fig, results, ncol=4, loc='upper center', bbox_to_anchor=(0.5, 0.15))
     plt.tight_layout(rect=[0, 0.15, 1.0, 1.0])
     plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
     utils.ensureDir(plot_name)
@@ -193,7 +337,8 @@ def plot_batch_sizes_individual_subplots(results: ExperimentResults, filename: t
             ax.set_ylabel(r'mean log ' + f'{get_latex_metric_name(metric_name)}', **axis_font)
         ax.set_title(get_latex_ds_name(ds_name))
 
-    fig.legend(*axs[4, 1].get_legend_handles_labels(), loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=4)
+    #fig.legend(*axs[4, 1].get_legend_handles_labels(), loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=4)
+    add_axis_or_figure_legend(fig, results, ncol=4, loc='upper center', bbox_to_anchor=(0.5, 0.05))
     plt.tight_layout(rect=[0, 0.05, 1.0, 1.0])
     plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
     utils.ensureDir(plot_name)
@@ -213,7 +358,8 @@ def plot_batch_sizes_metrics_subplots(results: ExperimentResults, filename: typi
         plot_batch_sizes_ax(ax, results, metric_name, set_ticks_and_labels=True)
 
     axs[-1, -1].axis('off')
-    fig.legend(*axs[0, 0].get_legend_handles_labels(), loc='center', bbox_to_anchor=(0.78, 0.18), ncol=1)
+    add_axis_or_figure_legend(fig, results, ncol=2, loc='center', bbox_to_anchor=(0.78, 0.18))
+    #fig.legend(*axs[0, 0].get_legend_handles_labels(), loc='center', bbox_to_anchor=(0.78, 0.18), ncol=1)
     plt.tight_layout()
     plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
     utils.ensureDir(plot_name)
@@ -234,7 +380,8 @@ def plot_learning_curves_ax(ax: plt.Axes, results: ExperimentResults, metric_nam
 
     ds_names = list({'_'.join(task_name.split('_')[:-1]) for task_name in results.task_names})
 
-    random_name = find_random_name(results)
+    random_names = find_random_names(results)
+    random_name = random_names[0] if len(random_names) > 0 else None
 
     for i, alg_name in enumerate(results.alg_names):
         log_means = [learning_curves.results_dict[alg_name][ds_name + '_256x16'] for ds_name in ds_names]
@@ -249,13 +396,13 @@ def plot_learning_curves_ax(ax: plt.Axes, results: ExperimentResults, metric_nam
                 ax.plot([np.log(n_train[0]), np.log(n_train[-1])], [results_list[-1], results_list[-1]],
                         '--', color='k', linewidth=1, zorder=1, **plot_options)
         else:
-            color_idx = colors[get_color_index(alg_name.split('_')[1])]
+            color = colors[get_color_index(alg_name.split('_')[1])]
             if "predictions" in alg_name:
                 # ax.plot(np.log(n_train), results_list, '-', marker=markers[pred_color_idx], color=colors[pred_color_idx],
-                ax.plot(np.log(n_train), results_list, '-', color=color_idx, **plot_options)
+                ax.plot(np.log(n_train), results_list, '-', color=color, **plot_options)
             else:
                 # ax.plot(np.log(n_train), results_list, '--', marker=markers[color_idx], color=colors[color_idx],
-                ax.plot(np.log(n_train), results_list, '--', color=color_idx, linewidth=1., **plot_options)
+                ax.plot(np.log(n_train), results_list, '--', color=color, linewidth=1., **plot_options)
 
     # # Plot white box average:
     # wb_learning_curve = np.mean(results.get_learning_curves_by_box(metric_name, white_box=True), axis=0)
@@ -292,36 +439,31 @@ def plot_learning_curves_ax_ci(ax: plt.Axes, results: ExperimentResults, metric_
 
     ds_names = list({'_'.join(task_name.split('_')[:-1]) for task_name in results.task_names})
 
-    pred_color_idx = 0
-    color_idx = 0
-
     random_name = find_random_name(results)
 
     for i, alg_name in enumerate(results.alg_names):
         log_means_ci = [learning_curves_ci.results_dict[alg_name][ds_name + '_256x16'] for ds_name in ds_names]
         results_list_ci = np.mean(log_means_ci, axis=0)
-        print(results_list_ci.shape)
+        # print(results_list_ci.shape)
         n_train = np.asarray([256*(i+1) for i in range(results_list_ci.shape[1])])
 
         plot_options = utils.update_dict(dict(alpha=0.7, markersize=3.5), plot_options)
 
-        label = get_latex_selection_method(alg_name.split('_')[1], "predictions" in alg_name) if labels is None else labels[i]
-
         if alg_name == random_name:
-            ax.plot(np.log(n_train), results_list_ci[1], '--o', color='k', label=label, **plot_options)
+            ax.plot(np.log(n_train), results_list_ci[1], '--o', color='k', **plot_options)
             if with_random_final:
                 ax.plot([np.log(n_train[0]), np.log(n_train[-1])], [results_list_ci[1, -1], results_list_ci[1, -1]],
                         '--', color='k', linewidth=0.5, **plot_options)
-        elif "predictions" in alg_name:
-            ax.fill_between(np.log(n_train), results_list_ci[0], results_list_ci[2], facecolor=colors[pred_color_idx], alpha=0.2)
-            ax.plot(np.log(n_train), results_list_ci[1], '-', color=colors[pred_color_idx],
-                     label=label, **plot_options)
-            pred_color_idx += 1
         else:
-            ax.fill_between(np.log(n_train), results_list_ci[0], results_list_ci[2], facecolor=colors[color_idx], alpha=0.2)
-            ax.plot(np.log(n_train), results_list_ci[1], '--',  color=colors[color_idx],
-                     label=label, **plot_options)
-            color_idx += 1
+            color = colors[get_color_index(alg_name.split('_')[1])]
+            if "predictions" in alg_name:
+                ax.fill_between(np.log(n_train), results_list_ci[0], results_list_ci[2], facecolor=color, alpha=0.2)
+                ax.plot(np.log(n_train), results_list_ci[1], '-', color=color,
+                         **plot_options)
+            else:
+                ax.fill_between(np.log(n_train), results_list_ci[0], results_list_ci[2], facecolor=color, alpha=0.2)
+                ax.plot(np.log(n_train), results_list_ci[1], '--',  color=color,
+                         **plot_options)
 
     if set_ticks_and_labels:
         xlocs = (np.log(256), np.log(512), np.log(1024), np.log(2048), np.log(4096))
@@ -354,8 +496,25 @@ def plot_learning_curves(results: ExperimentResults, filename: typing.Union[str,
     plt.close(fig)
 
 
+def plot_learning_curves_ci(results: ExperimentResults, filename: typing.Union[str, Path], metric_name: str,
+                         figsize: typing.Optional[typing.Tuple[float, float]] = None):
+    # plot averaged learning curve for all tasks
+    fig, axs = plt.subplots(figsize=figsize or (3.5, 3.5))
+
+    plot_learning_curves_ax_ci(axs, results=results, metric_name=metric_name)
+    add_axis_or_figure_legend(axs, results, ncol=2, loc='lower left')
+
+    plt.tight_layout()
+    plot_name = Path(custom_paths.get_plots_path()) / results.exp_name / filename
+    utils.ensureDir(plot_name)
+    plt.savefig(plot_name)
+    plt.close(fig)
+
+
 def add_axis_or_figure_legend(axis_or_fig, results, ncol, **legend_kwargs):
-    random_name = find_random_name(results)
+    random_names = find_random_names(results)
+    random_name = random_names.pop() if random_names else None
+
     incl_box = random_name != 'NN_random'
 
     # Build custom legend
@@ -379,7 +538,7 @@ def add_axis_or_figure_legend(axis_or_fig, results, ncol, **legend_kwargs):
             handles.append(placeholder_patch)
         labels.add(label)
 
-        color = 'k' if alg_name == random_name else colors[get_color_index(alg_name.split('_')[1])]
+        color = 'k' if alg_name.split('_')[1].startswith("random") else colors[get_color_index(alg_name.split('_')[1])]
         handle = Line2D([0], [0], color=color, linestyle='-', label=label)
         handles.append(handle)
 
@@ -691,6 +850,10 @@ def plot_correlation_between_methods(results: ExperimentResults, filename: typin
 
 def find_random_name(results):
     return results.find_random_name()
+
+
+def find_random_names(results):
+    return results.find_random_names()
 
 
 def plot_skewness_ax(ax: plt.Axes, results: ExperimentResults, metric_name: str, alg_name: str,

@@ -798,32 +798,32 @@ if __name__ == '__main__':
     sklearn_rf_bs_configs = get_sklearn_configs()
 
     # ReLU batch size experiments
-    # run_experiments('relu', 20, relu_bs_configs.distribute_jobs(job_index, num_jobs),
-    #                 batch_sizes_configs=[[2**(12-m)]*(2**m) for m in range(7) if m != 4],
-    #                 task_descs=[f'{2**(12-m)}x{2**m}' for m in range(7) if m != 4],
-    #                 use_pool_for_normalization=use_pool_for_normalization)
+    run_experiments('relu', 5, relu_bs_configs.distribute_jobs(job_index, num_jobs),
+                    batch_sizes_configs=[[2**(12-m)]*(2**m) for m in range(7) if m != 4],
+                    task_descs=[f'{2**(12-m)}x{2**m}' for m in range(7) if m != 4],
+                    use_pool_for_normalization=use_pool_for_normalization)
 
     # Sklearn experiments
-    # run_experiments('sklearn', 10, get_sklearn_ensemble_size_ablation_configs().distribute_jobs(job_index, num_jobs),
-    #                 use_pool_for_normalization=use_pool_for_normalization)
+    run_experiments('sklearn', 5, get_sklearn_ensemble_size_ablation_configs().distribute_jobs(job_index, num_jobs),
+                    use_pool_for_normalization=use_pool_for_normalization)
 
     run_experiments('sklearn', 5, get_sklearn_configs().distribute_jobs(job_index, num_jobs),
                     use_pool_for_normalization=use_pool_for_normalization)
 
-    # run_experiments('sklearn', 10, sklearn_rf_bs_configs.distribute_jobs(job_index, num_jobs),
-    #                 batch_sizes_configs=[[2**(12-m)]*(2**m) for m in range(7) if m != 4],
-    #                 task_descs=[f'{2**(12-m)}x{2**m}' for m in range(7) if m != 4],
-    #                 use_pool_for_normalization=use_pool_for_normalization)
+    run_experiments('sklearn', 5, sklearn_rf_bs_configs.distribute_jobs(job_index, num_jobs),
+                    batch_sizes_configs=[[2**(12-m)]*(2**m) for m in range(7) if m != 4],
+                    task_descs=[f'{2**(12-m)}x{2**m}' for m in range(7) if m != 4],
+                    use_pool_for_normalization=use_pool_for_normalization)
     
     # # # ReLU experiments
-    # run_experiments('relu', 20, get_relu_configs().distribute_jobs(job_index, num_jobs),
-    #                 use_pool_for_normalization=use_pool_for_normalization)
+    run_experiments('relu', 5, get_relu_configs().distribute_jobs(job_index, num_jobs),
+                    use_pool_for_normalization=use_pool_for_normalization)
 
-    # run_experiments(
-    #     'relu', 5, get_relu_ensemble_size_ablation_configs().distribute_jobs(job_index, num_jobs),
-    #     use_pool_for_normalization=use_pool_for_normalization,
-    #     sequential_split=None
-    # )
+    run_experiments(
+        'relu', 5, get_relu_ensemble_size_ablation_configs().distribute_jobs(job_index, num_jobs),
+        use_pool_for_normalization=use_pool_for_normalization,
+        sequential_split=None
+    )
 
     # # SiLU experiments, without batch size experiments
     # run_experiments('silu', 20, get_silu_configs(),

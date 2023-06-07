@@ -80,7 +80,7 @@ LIT_RESULTS_RF_PREDICTIONS_DICT = {
 
 # Create a dictionary of LIT_RESULTS_VE_CAT_PREDICTIONS with the corresponding labels
 LIT_RESULTS_BAGGING_RF_PREDICTIONS_DICT = {
-    "BagggingRF-random-10": "Uniform",
+    "BagggingRF_random-10": "Uniform",
     "BagggingRF_maxdiag_predictions-10": r"$\blacksquare$ BALD",
     "BagggingRF_maxdet-p_predictions-10": r"$\blacksquare$ BatchBALD",
     'BagggingRF_bait-f-p_predictions-10': r'$\blacksquare$ BAIT',
@@ -281,8 +281,6 @@ if __name__ == '__main__':
             try:
                 # filter results to only contain algs with VE-CAT_ as prefix
                 alg_names_list = list(filter(lambda alg_name: alg_name.startswith('BagggingRF_'), results.alg_names))
-                alg_names_list.remove('BagggingRF_random')
-                # alg_names_list.append('RF_random')
                 rf_results = results.filter_alg_names(alg_names_list)
                 rf_results.exp_name = 'sklearn-bagging-rf'
                 alg_names_sklearn = list(LIT_RESULTS_BAGGING_RF_PREDICTIONS_DICT.keys())

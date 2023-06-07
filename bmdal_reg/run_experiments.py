@@ -729,7 +729,8 @@ def run_experiments(exp_name: str, n_splits: int, run_config_list: RunConfigList
 def get_sklearn_ensemble_size_ablation_configs() -> RunConfigList:
     lst = RunConfigList()
     for prefix, create_model, n_models_list, mem_threshold, bs_mem_threshold in [
-        ("RF", sklearn_models.RandomForestRegressor, (12,25,50,200,400,800), 1e-6, 8e-8),
+        ("RF", sklearn_models.RandomForestRegressor, (12,25,50,100,200,400,800), 1e-6, 8e-8),
+        ("BagggingRF", sklearn_models.BaggingRandomForestRegressor, (5,10,20,40,80,160), 1e-6, 8e-8),
         ("VE-CAT", sklearn_models.VECatBoostRegressor, (5,10,20,40,80,160,320), 9e-6, 8e-8),
     ]:
         for n_models in n_models_list:
@@ -741,8 +742,8 @@ def get_sklearn_ensemble_size_ablation_configs() -> RunConfigList:
 def get_sklearn_configs() -> RunConfigList:
     lst = RunConfigList()
     for prefix, create_model, n_models, mem_threshold, bs_mem_threshold in [
-        #("BagggingRF", sklearn_models.BaggingRandomForestRegressor, 10, 1e-6, 8e-8),
-        #("RF", sklearn_models.RandomForestRegressor, 100, 1e-6, 8e-8),
+        ("BagggingRF", sklearn_models.BaggingRandomForestRegressor, 10, 1e-6, 8e-8),
+        ("RF", sklearn_models.RandomForestRegressor, 100, 1e-6, 8e-8),
         ("VE-CAT", sklearn_models.VECatBoostRegressor, 20, 9e-6, 8e-8),
         #("HGR", sklearn_models.HistGradientBoostingRegressor, 10, 9e-7, 7e-8),
         #("BaggingCAT", sklearn_models.BaggingCatBoostRegressor, 5, 9e-5, 8e-7),

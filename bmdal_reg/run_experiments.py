@@ -214,11 +214,21 @@ def get_bmdal_predictions_configs(**kwargs) -> RunConfigList:
         :param kwargs: allows to set some hyperparameters, for example the learning rate, sigma_w, sigma_b, etc.
         :return: Returns a list of configurations for BMDAL used in the paper.
         """
-    sigma = kwargs.get('post_sigma', 0.1)
-    n_models = kwargs.get('n_models', 10)
+    sigma = kwargs.pop('post_sigma', 0.1)
+    n_models = kwargs.pop('n_models', 10)
     compute_eff_dim = True
-    kwargs = utils.update_dict(dict(maxdet_sigma=sigma, bait_sigma=sigma, compute_eff_dim=compute_eff_dim,
-                                    allow_float64=True, lr=0.375, weight_gain=0.2, bias_gain=0.2), kwargs)
+    kwargs = utils.update_dict(
+        dict(
+            maxdet_sigma=sigma,
+            bait_sigma=sigma,
+            compute_eff_dim=compute_eff_dim,
+            allow_float64=True,
+            lr=0.375,
+            weight_gain=0.2,
+            bias_gain=0.2
+        ),
+        kwargs
+    )
 
     lst = RunConfigList()
 
@@ -235,7 +245,7 @@ def get_bmdal_predictions_configs(**kwargs) -> RunConfigList:
         #                               n_models=n_models, kernel_transforms=[('scale', [None])],
         #                               **kwargs))
 
-        lst.append(mem_threshold, ModelTrainer(f'NN_bait-{fb_mode}-p_predictions-{n_models}', selection_method='bait',
+        lst.append(4*mem_threshold, ModelTrainer(f'NN_bait-{fb_mode}-p_predictions-{n_models}', selection_method='bait',
                                       overselection_factor=overselection_factor, base_kernel='predictions',
                                       sel_with_train=False,
                                       n_models=n_models, kernel_transforms=[],
@@ -244,23 +254,23 @@ def get_bmdal_predictions_configs(**kwargs) -> RunConfigList:
     bs_mem_threshold = 8e-8
 
     # maxdet kernel comparison
-    # lst.append(1e-5, ModelTrainer(f'NN_maxdet-p_predictions-{n_models}_scale', selection_method='maxdet',
+    # lst.append(4*1e-5, ModelTrainer(f'NN_maxdet-p_predictions-{n_models}_scale', selection_method='maxdet',
     #                               base_kernel='predictions', n_models=n_models,
     #                               sel_with_train=False,
     #                               kernel_transforms=[('scale', [None])],
     #                               **kwargs), bs_mem_threshold)
 
-    lst.append(1e-5, ModelTrainer(f'NN_maxdet-p_predictions-{n_models}', selection_method='maxdet',
+    lst.append(4*1e-5, ModelTrainer(f'NN_maxdet-p_predictions-{n_models}', selection_method='maxdet',
                                   base_kernel='predictions', n_models=n_models, sel_with_train=False,
                                   kernel_transforms=[],
                                   **kwargs), bs_mem_threshold)
 
-    # lst.append(1e-5, ModelTrainer(f'NN_maxdet-tp_predictions-{n_models}_scale', selection_method='maxdet',
+    # lst.append(4*1e-5, ModelTrainer(f'NN_maxdet-tp_predictions-{n_models}_scale', selection_method='maxdet',
     #                               base_kernel='predictions', sel_with_train=True,
     #                               n_models=n_models, kernel_transforms=[('scale', [None])],
     #                               **kwargs), bs_mem_threshold)
     #
-    # lst.append(1e-5, ModelTrainer(f'NN_maxdet-tp_predictions-{n_models}', selection_method='maxdet',
+    # lst.append(4*1e-5, ModelTrainer(f'NN_maxdet-tp_predictions-{n_models}', selection_method='maxdet',
     #                               base_kernel='predictions', sel_with_train=True,
     #                               kernel_transforms=[],
     #                               n_models=n_models,
@@ -268,34 +278,34 @@ def get_bmdal_predictions_configs(**kwargs) -> RunConfigList:
 
     # maxdist, kmeanspp, lcmd kernel comparisons
     for sel_name in ['maxdist', 'kmeanspp', 'lcmd']:
-        lst.append(mem_threshold, ModelTrainer(f'NN_{sel_name}-tp_predictions-{n_models}', selection_method=sel_name,
+        lst.append(4*mem_threshold, ModelTrainer(f'NN_{sel_name}-tp_predictions-{n_models}', selection_method=sel_name,
                                       base_kernel='predictions', kernel_transforms=[], sel_with_train=True,
                                       n_models=n_models, **kwargs))
-        # lst.append(mem_threshold, ModelTrainer(f'NN_{sel_name}-tp_predictions-{n_models}_scale', selection_method=sel_name,
+        # lst.append(4*mem_threshold, ModelTrainer(f'NN_{sel_name}-tp_predictions-{n_models}_scale', selection_method=sel_name,
         #                               base_kernel='predictions', sel_with_train=True,
         #                               n_models=n_models, kernel_transforms=[('scale', [None])],
         #                               **kwargs))
-        lst.append(mem_threshold, ModelTrainer(f'NN_{sel_name}-p_predictions-{n_models}', selection_method=sel_name,
+        lst.append(4*mem_threshold, ModelTrainer(f'NN_{sel_name}-p_predictions-{n_models}', selection_method=sel_name,
                                       base_kernel='predictions', kernel_transforms=[], sel_with_train=False,
                                       n_models=n_models, **kwargs))
-        # lst.append(mem_threshold, ModelTrainer(f'NN_{sel_name}-p_predictions-{n_models}_scale', selection_method=sel_name,
+        # lst.append(4*mem_threshold, ModelTrainer(f'NN_{sel_name}-p_predictions-{n_models}_scale', selection_method=sel_name,
         #                               base_kernel='predictions', sel_with_train=False,
         #                               n_models=n_models, kernel_transforms=[('scale', [None])],
         #                               **kwargs))
 
     # maxdiag kernel comparison
-    lst.append(mem_threshold, ModelTrainer(f'NN_maxdiag_predictions-{n_models}', selection_method='maxdiag',
+    lst.append(4*mem_threshold, ModelTrainer(f'NN_maxdiag_predictions-{n_models}', selection_method='maxdiag',
                                   base_kernel='predictions', kernel_transforms=[], sel_with_train=False,
                                   n_models=n_models,
                                   **kwargs))
-    # lst.append(mem_threshold, ModelTrainer(f'NN_maxdiag_predictions-{n_models}_scale', selection_method='maxdiag',
+    # lst.append(4*mem_threshold, ModelTrainer(f'NN_maxdiag_predictions-{n_models}_scale', selection_method='maxdiag',
     #                               base_kernel='predictions', kernel_transforms=[('scale', [None])],
     #                               sel_with_train=False,
     #                               n_models=n_models,
     #                               **kwargs))
 
     # Frank-Wolfe kernel comparison
-    lst.append(mem_threshold, ModelTrainer(f'NN_fw-p_predictions-{n_models}', selection_method='fw',
+    lst.append(4*mem_threshold, ModelTrainer(f'NN_fw-p_predictions-{n_models}', selection_method='fw',
                                   base_kernel='predictions', kernel_transforms=[], sel_with_train=False,
                                   n_models=n_models,
                                   **kwargs))
@@ -660,7 +670,7 @@ def get_silu_tuning_configs() -> RunConfigList:
 
 def run_experiments(exp_name: str, n_splits: int, run_config_list: RunConfigList,
                     batch_sizes_configs: Optional[List[List[int]]] = None, task_descs: Optional[List[str]] = None,
-                    use_pool_for_normalization: bool = True, max_jobs_per_device: int = 40,
+                    use_pool_for_normalization: bool = True, max_jobs_per_device: int = 4,
                     n_train_initial: int = 256, ds_names: Optional[List[str]] = None,
                     sequential_split: Optional[int] = 9):
     """
@@ -719,7 +729,8 @@ def run_experiments(exp_name: str, n_splits: int, run_config_list: RunConfigList
 def get_sklearn_ensemble_size_ablation_configs() -> RunConfigList:
     lst = RunConfigList()
     for prefix, create_model, n_models_list, mem_threshold, bs_mem_threshold in [
-        ("RF", sklearn_models.RandomForestRegressor, (12,25,50,200,400,800), 1e-6, 8e-8),
+        ("RF", sklearn_models.RandomForestRegressor, (12,25,50,100,200,400,800), 1e-6, 8e-8),
+        ("BagggingRF", sklearn_models.BaggingRandomForestRegressor, (5,10,20,40,80,160), 1e-6, 8e-8),
         ("VE-CAT", sklearn_models.VECatBoostRegressor, (5,10,20,40,80,160,320), 9e-6, 8e-8),
     ]:
         for n_models in n_models_list:
@@ -739,6 +750,12 @@ def get_sklearn_configs() -> RunConfigList:
     ]:
         lst += get_bmdal_sklearn_predictions_configs(prefix=prefix, create_model=create_model, n_models=n_models,
                                                      mem_threshold=mem_threshold, bs_mem_threshold=bs_mem_threshold)
+    return lst
+
+def get_relu_ensemble_size_ablation_configs() -> RunConfigList:
+    lst = RunConfigList()
+    for ensemble_size in (2,20,40,80,160):
+        lst += get_bmdal_predictions_configs(weight_gain=0.2, bias_gain=0.2, post_sigma=1e-3, lr=0.375, act='relu', n_models=ensemble_size)
     return lst
 
 def get_relu_configs() -> RunConfigList:
@@ -773,7 +790,7 @@ if __name__ == '__main__':
         ['NN_lcmd-tp_predictions-10', 'NN_lcmd-tp_predictions_scale-10',
          'NN_kmeanspp-p_predictions-10', 'NN_kmeanspp-p_predictions_scale-10',
          'NN_fw-p_predictions-10', 'NN_fw-p_predictions_scale-10',
-         'NN_maxdist-p_predictions-10', 'NN_maxdist-p_predictions_scal-10e'
+         'NN_maxdist-p_predictions-10', 'NN_maxdist-p_predictions_scale-10'
          'NN_maxdet-p_predictions-10', 'NN_maxdet-p_predictions_scale-10',
          'NN_maxdiag_predictions-10', 'NN_maxdiag_predictions_scale-10',
          'NN_bait-f-p_predictions-10', 'NN_bait-f-p_predictions_scale-10']
@@ -782,26 +799,33 @@ if __name__ == '__main__':
     sklearn_rf_bs_configs = get_sklearn_configs()
 
     # ReLU batch size experiments
-    # run_experiments('relu', 20, relu_bs_configs.distribute_jobs(job_index, num_jobs),
-    #                 batch_sizes_configs=[[2**(12-m)]*(2**m) for m in range(7) if m != 4],
-    #                 task_descs=[f'{2**(12-m)}x{2**m}' for m in range(7) if m != 4],
-    #                 use_pool_for_normalization=use_pool_for_normalization)
-
-    # Sklearn experiments
-    run_experiments('sklearn', 10, get_sklearn_ensemble_size_ablation_configs().distribute_jobs(job_index, num_jobs),
+    run_experiments('relu', 5, relu_bs_configs.distribute_jobs(job_index, num_jobs),
+                    batch_sizes_configs=[[2**(12-m)]*(2**m) for m in range(7) if m != 4],
+                    task_descs=[f'{2**(12-m)}x{2**m}' for m in range(7) if m != 4],
                     use_pool_for_normalization=use_pool_for_normalization)
 
-    # run_experiments('sklearn', 20, get_sklearn_configs().distribute_jobs(job_index, num_jobs),
-    #                 use_pool_for_normalization=use_pool_for_normalization)
+    # Sklearn experiments
+    run_experiments('sklearn', 5, get_sklearn_ensemble_size_ablation_configs().distribute_jobs(job_index, num_jobs),
+                    use_pool_for_normalization=use_pool_for_normalization)
 
-    # run_experiments('sklearn', 10, sklearn_rf_bs_configs.distribute_jobs(job_index, num_jobs),
-    #                 batch_sizes_configs=[[2**(12-m)]*(2**m) for m in range(7) if m != 4],
-    #                 task_descs=[f'{2**(12-m)}x{2**m}' for m in range(7) if m != 4],
-    #                 use_pool_for_normalization=use_pool_for_normalization)
+    run_experiments('sklearn', 5, get_sklearn_configs().distribute_jobs(job_index, num_jobs),
+                    use_pool_for_normalization=use_pool_for_normalization)
+
+    run_experiments('sklearn', 5, sklearn_rf_bs_configs.distribute_jobs(job_index, num_jobs),
+                    batch_sizes_configs=[[2**(12-m)]*(2**m) for m in range(7) if m != 4],
+                    task_descs=[f'{2**(12-m)}x{2**m}' for m in range(7) if m != 4],
+                    use_pool_for_normalization=use_pool_for_normalization)
     
     # # # ReLU experiments
-    # run_experiments('relu', 20, get_relu_configs().distribute_jobs(job_index, num_jobs),
-    #                 use_pool_for_normalization=use_pool_for_normalization)
+    run_experiments('relu', 5, get_relu_configs().distribute_jobs(job_index, num_jobs),
+                    use_pool_for_normalization=use_pool_for_normalization)
+
+    run_experiments(
+        'relu', 5, get_relu_ensemble_size_ablation_configs().distribute_jobs(job_index, num_jobs),
+        use_pool_for_normalization=use_pool_for_normalization,
+        sequential_split=None
+    )
+
     # # SiLU experiments, without batch size experiments
     # run_experiments('silu', 20, get_silu_configs(),
     #                 use_pool_for_normalization=use_pool_for_normalization)

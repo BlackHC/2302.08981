@@ -536,7 +536,7 @@ def add_axis_or_figure_legend(axis_or_fig, results, ncol, **legend_kwargs):
         label = get_latex_literature_name(alg_name.split('_')[1], "predictions" in alg_name, incl_box)
         if label in labels:
             continue
-        if i % n_per_col == 0 and i != 0:
+        if len(labels) % n_per_col == 0 and i != 0:
             handles.append(placeholder_patch)
         labels.add(label)
 

@@ -760,8 +760,8 @@ def get_relu_ensemble_size_ablation_configs() -> RunConfigList:
 
 def get_relu_configs() -> RunConfigList:
     lst_pred =get_bmdal_predictions_configs(weight_gain=0.2, bias_gain=0.2, post_sigma=1e-3, lr=0.375, act='relu')
-    # lst_org = get_bmdal_configs( weight_gain=0.2, bias_gain=0.2, post_sigma=1e-3, lr=0.375, act='relu')
-    return lst_pred # + lst_org
+    lst_org = get_bmdal_configs( weight_gain=0.2, bias_gain=0.2, post_sigma=1e-3, lr=0.375, act='relu')
+    return lst_pred + lst_org
 
 
 def get_silu_configs() -> RunConfigList:
@@ -781,6 +781,17 @@ if __name__ == '__main__':
 
     use_pool_for_normalization = True
 
+    LIT_RESULTS_NN_BMDAL_DICT = {
+        'NN_random': 'Uniform',
+        'NN_maxdiag_ll_train': r'$\square$ BALD',
+        'NN_fw-p_ll_acs-rf-hyper-512': r'$\square$ ACS-FW',
+        'NN_maxdet-p_ll_train': r'$\square$ BatchBALD',
+        'NN_bait-fb-p_ll_train': r'$\square$ BAIT',
+        'NN_maxdist-tp_ll': r'$\square$ Core-Set/\\FF-Active',
+        'NN_kmeanspp-p_ll_train': r'$\square$ BADGE',
+        'NN_lcmd-tp_grad_rp-512': r'$\square$ LCMD'
+    }
+
     relu_bs_configs = get_relu_configs().filter_names(
         ['NN_lcmd-tp_grad_rp-512', 'NN_kmeanspp-p_grad_rp-512_acs-rf-512', 'NN_fw-p_grad_rp-512_acs-rf-hyper-512',
          'NN_maxdist-p_grad_rp-512_train',
@@ -793,7 +804,7 @@ if __name__ == '__main__':
          'NN_maxdist-p_predictions-10', 'NN_maxdist-p_predictions_scale-10'
          'NN_maxdet-p_predictions-10', 'NN_maxdet-p_predictions_scale-10',
          'NN_maxdiag_predictions-10', 'NN_maxdiag_predictions_scale-10',
-         'NN_bait-f-p_predictions-10', 'NN_bait-f-p_predictions_scale-10']
+         'NN_bait-f-p_predictions-10', 'NN_bait-f-p_predictions_scale-10'] + list(LIT_RESULTS_NN_BMDAL_DICT.keys())
     )
 
     sklearn_rf_bs_configs = get_sklearn_configs()

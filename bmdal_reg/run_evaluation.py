@@ -7,7 +7,7 @@ from bmdal_reg.evaluation.visualize_lcmd import create_lcmd_plots
 
 # Create a dictionary of LIT_RESULTS_NN_BMDAL with the corresponding labels from LIT_RESULTS_LABELS
 # The original results do not contain acquisition batch size ablations for the methods that follow prior art closely.
-LIT_RESULTS_NN_BMDAL_DICT = {
+BEST_RESULTS_NN_BMDAL_DICT = {
     'NN_random': 'Uniform',
     # 'NN_maxdiag_ll_train': r'$\square$ BALD',
     'NN_maxdiag_grad_rp-512_acs-rf-512': r'$\square$ BALD',
@@ -24,16 +24,16 @@ LIT_RESULTS_NN_BMDAL_DICT = {
     'NN_lcmd-tp_grad_rp-512': r'$\square$ LCMD'
 }
 
-# LIT_RESULTS_NN_BMDAL_DICT = {
-#     'NN_random': 'Uniform',
-#     'NN_maxdiag_ll_train': r'$\square$ BALD',
-#     'NN_fw-p_ll_acs-rf-hyper-512': r'$\square$ ACS-FW',
-#     'NN_maxdet-p_ll_train': r'$\square$ BatchBALD',
-#     'NN_bait-fb-p_ll_train': r'$\square$ BAIT',
-#     'NN_maxdist-tp_ll': r'$\square$ Core-Set/\\FF-Active',
-#     'NN_kmeanspp-p_ll_train': r'$\square$ BADGE',
-#     'NN_lcmd-tp_grad_rp-512': r'$\square$ LCMD'
-# }
+LIT_RESULTS_NN_BMDAL_DICT = {
+    'NN_random': 'Uniform',
+    'NN_maxdiag_ll_train': r'$\square$ BALD',
+    'NN_fw-p_ll_acs-rf-hyper-512': r'$\square$ ACS-FW',
+    'NN_maxdet-p_ll_train': r'$\square$ BatchBALD',
+    'NN_bait-fb-p_ll_train': r'$\square$ BAIT',
+    'NN_maxdist-tp_ll': r'$\square$ Core-Set/\\FF-Active',
+    'NN_kmeanspp-p_ll_train': r'$\square$ BADGE',
+    'NN_lcmd-tp_grad_rp-512': r'$\square$ LCMD'
+}
 
 """
 alg_names_relu = ['NN_random', 'NN_maxdiag_grad_rp-512_acs-rf-512', 'NN_maxdet-p_grad_rp-512_train',
@@ -80,7 +80,7 @@ LIT_RESULTS_RF_PREDICTIONS_DICT = {
 
 # Create a dictionary of LIT_RESULTS_VE_CAT_PREDICTIONS with the corresponding labels
 LIT_RESULTS_BAGGING_RF_PREDICTIONS_DICT = {
-    "BagggingRF-random-10": "Uniform",
+    "BagggingRF_random-10": "Uniform",
     "BagggingRF_maxdiag_predictions-10": r"$\blacksquare$ BALD",
     "BagggingRF_maxdet-p_predictions-10": r"$\blacksquare$ BatchBALD",
     'BagggingRF_bait-f-p_predictions-10': r'$\blacksquare$ BAIT',
@@ -281,8 +281,6 @@ if __name__ == '__main__':
             try:
                 # filter results to only contain algs with VE-CAT_ as prefix
                 alg_names_list = list(filter(lambda alg_name: alg_name.startswith('BagggingRF_'), results.alg_names))
-                alg_names_list.remove('BagggingRF_random')
-                # alg_names_list.append('RF_random')
                 rf_results = results.filter_alg_names(alg_names_list)
                 rf_results.exp_name = 'sklearn-bagging-rf'
                 alg_names_sklearn = list(LIT_RESULTS_BAGGING_RF_PREDICTIONS_DICT.keys())
@@ -307,9 +305,8 @@ if __name__ == '__main__':
             #     traceback.print_exc()
         if exp_name == 'relu':
             # selected algs for ReLU (best ones in terms of RMSE after ignoring slow ones, see table in the paper)
-            alg_names_list = list(
-                filter(lambda alg_name: "predictions" in alg_name or
-                                        alg_name in LIT_RESULTS_NN_BMDAL_DICT.keys(),
+            alg_names_list = list(BEST_RESULTS_NN_BMDAL_DICT.keys()) + list(
+                filter(lambda alg_name: "predictions" in alg_name,
                        results.alg_names))
             relu_results = results.filter_alg_names(alg_names_list)
             alg_names_relu = list(LIT_RESULTS_NN_BMDAL_DICT.keys()) + list(LIT_RESULTS_NN_PREDICTIONS_DICT.keys())
@@ -320,6 +317,23 @@ if __name__ == '__main__':
                 with_ensemble_size_ablation=True,
                 with_wb_bb_correlation_plots=True,
                 literature_results_dict=LIT_RESULTS_NN_BMDAL_DICT | LIT_RESULTS_NN_PREDICTIONS_DICT
+            )
+
+            # selected algs for ReLU (best ones in terms of RMSE after ignoring slow ones, see table in the paper)
+            alg_names_list = list(BEST_RESULTS_NN_BMDAL_DICT.keys()) + list(
+                filter(lambda alg_name: "predictions" in alg_name,
+                       results.alg_names))
+
+            strongest_relu_results = results.filter_alg_names(alg_names_list)
+            strongest_relu_results.exp_name = 'strongest_relu'
+            strongest_alg_names_relu = list(BEST_RESULTS_NN_BMDAL_DICT.keys()) + list(LIT_RESULTS_NN_PREDICTIONS_DICT.keys())
+            plot_all(
+                strongest_relu_results,
+                alg_names=strongest_alg_names_relu,
+                with_batch_size_plots=True,
+                with_ensemble_size_ablation=True,
+                with_wb_bb_correlation_plots=True,
+                literature_results_dict=BEST_RESULTS_NN_BMDAL_DICT | LIT_RESULTS_NN_PREDICTIONS_DICT
             )
 
         print('Finished plotting')

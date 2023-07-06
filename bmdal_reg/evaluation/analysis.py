@@ -198,9 +198,9 @@ class ExperimentResults:
         pkl_filename = Path(custom_paths.get_cache_path()) / exp_name / 'results.pkl'
         results = None
         # first try to load from cached pkl file
-        if utils.existsFile(pkl_filename):
-        #if utils.existsFile(pkl_filename) \
-        #    and os.path.getmtime(pkl_filename) >= utils.last_mod_time_recursive(str(results_path)):
+        # if utils.existsFile(pkl_filename):
+        if utils.existsFile(pkl_filename) \
+           and os.path.getmtime(pkl_filename) >= utils.last_mod_time_recursive(str(results_path)):
             try:
                 results = utils.deserialize(pkl_filename)
             except Exception as e:

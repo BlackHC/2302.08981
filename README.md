@@ -1,55 +1,31 @@
-## Andreas Scratch Commands
+# Black-Box Batch Active Learning for Regression
+https://arxiv.org/abs/2302.08981 https://openreview.net/forum?id=fvEvDlKko6
 
-Copilot, help me find the bash command to rename files as follows:
+If you use this code for research purposes, please cite "[Black-Box Batch Active Learning for Regression](https://arxiv.org/abs/2302.08981)":
 
-results/sklearn/diamonds_256x16/RF_lcmd-p_predictions-1 -> results/sklearn/diamonds_256x16/RF_lcmd-p_predictions-100
-results/sklearn/diamonds_256x16/VE-CAT_bait-fb-p_predictions-1 -> results/sklearn/diamonds_256x16/VE-CAT_bait-fb-p_predictions-100
 
-Answer:
-
-```bash
-for f in results/sklearn/*_256x16/RF_*_predictions-1; do echo mv $f ${f%_predictions-1}_predictions-100; done
+```bibtex
+@misc{kirsch2023blackbox,
+    title={Black-Box Batch Active Learning for Regression},
+    author={Andreas Kirsch},
+    year={2023},
+    eprint={2302.08981},
+    archivePrefix={arXiv},
+    primaryClass={cs.LG}
+}
 ```
 
-```bash
-for f in results/sklearn/*_256x16/VE-CAT_*_predictions-1; do echo mv $f ${f%_predictions-1}_predictions-20; done
-```
+This repository extends the repository of the paper "[A Framework and Benchmark for Deep Batch Active Learning for Regression](https://arxiv.org/abs/2203.09410)" to supporting empirical covariance kernels which allows to use it for active-learning with black-box models.
 
-# Deep Batch Active Learning for Regression
-[![Identifier](https://img.shields.io/badge/doi-10.18419%2Fdarus--807-d45815.svg)](https://doi.org/10.18419/darus-3110)
-
-This repository contains code accompanying our paper ["A Framework and Benchmark for Deep Batch Active Learning for Regression"](https://arxiv.org/abs/2203.09410). It can be used for the following purposes:
-- Apply various pool-based Batch Mode Deep Active Learning (BMDAL) algorithms for regression to custom neural networks (NNs) or kernel methods
-- Use our NN for tabular regression through a simple scikit-learn style interface
-- Download large tabular regression data sets from our benchmark
-- Compare BMDAL algorithms using our benchmark
-
-If you use this code for research purposes, plese cite [our paper](https://arxiv.org/abs/2203.09410).
-
-## Versions
-
-- The commit corresponding to [version 1](https://arxiv.org/abs/2203.09410v1) of our arXiv paper is tagged `arxiv_v1` and also archived with the corresponding data at [DaRUS](https://doi.org/10.18419/darus-2615).
-- The commit corresponding to [version 2](https://arxiv.org/abs/2203.09410v2) of our arXiv paper is tagged `arxiv_v2` and also archived with the corresponding data at [DaRUS](https://doi.org/10.18419/darus-3110).
-Results from versions 1 and 2 are run with slightly different options, hence they should not be mixed though the numbers (except for the runtimes) are very similar. Changes in version 2 are listed below.
+See the [GitHub repository](https://github.com/dholzmueller/bmdal_reg) of "A Framework and Benchmark for Deep Batch Active Learning for Regression" for more infos. The following is based on the original readme.
 
 ## License
 
 This source code is licensed under the Apache 2.0 license. However, the implementation of the acs-rf-hyper kernel transformation in `bmdal/features.py` is adapted from the source code at [https://github.com/rpinsler/active-bayesian-coresets](https://github.com/rpinsler/active-bayesian-coresets), which comes with its own (non-commercial) license. Please respect this license when using the acs-rf-hyper transformation directly from `bmdal/features.py` or indirectly through the interface provided at `bmdal/algorithms.py`.
 
-## Installation
-
-This code has been tested with Python 3.9.2 but may be compatible with versions down to Python 3.6. 
-
-### Through pip
-For running our NN and the active learning methods, a `pip` installation is sufficient. The library can be installed via 
-```
-pip3 install bmdal_reg
-```
-When using our benchmarking code through a `pip` installation, the paths where experiment data and plots are saved can be modified through changing the corresponding path variables of `bmdal_reg.custom_paths.CustomPaths` before running the benchmark.
-
 ### Manually
 
-For certain purposes, especially trying new methods and running the benchmark, it might be helpful or necessary to modify the code. For this, the code can be manually installed via cloning the [GitHub repository](https://github.com/dholzmueller/bmdal_reg) and then following the instructions below:
+For certain purposes, especially trying new methods and running the benchmark, it might be helpful or necessary to modify the code. For this, the code can be manually installed via cloning this repository and then following the instructions below:
 
 The following packages (available through `pip`) need to be installed:
 - General: `torch`, `numpy`, `dill`
@@ -91,7 +67,7 @@ Depending on your use case, some of the following introductory Jupyter notebooks
 - [examples/benchmark.ipynb](https://github.com/dholzmueller/bmdal_reg/blob/main/examples/benchmark.ipynb) shows how to download or reproduce our experimental results, how to benchmark other methods, and how to evaluate the results.
 - [examples/using_bmdal.ipynb](https://github.com/dholzmueller/bmdal_reg/blob/main/examples/using_bmdal.ipynb) shows how to apply our BMDAL framework to your use-case.
 - [examples/framework_details.ipynb](https://github.com/dholzmueller/bmdal_reg/blob/main/examples/framework_details.ipynb) explains how our BMDAL framework is implemented, which may be relevant for advanced usage.
-- *New:* [examples/nn_interface.ipynb](https://github.com/dholzmueller/bmdal_reg/blob/main/examples/nn_interface.ipynb) shows how our NN configuration can be used (without active learning) through a simple scikit-learn style interface.
+- [examples/nn_interface.ipynb](https://github.com/dholzmueller/bmdal_reg/blob/main/examples/nn_interface.ipynb) shows how our NN configuration can be used (without active learning) through a simple scikit-learn style interface.
 
 Besides these notebooks, you can also take a look at the code directly. The more important parts of our code are documented with docstrings.
 
@@ -105,18 +81,7 @@ The code is structured as follows:
 - The file `check_task_learnability.py` has been used to check the reduction in RMSE on different data sets when going from 256 to 4352 random samples. We used this to sort out the data sets where the reduction in RMSE was too small, since these data sets are unlikely to make a substantial difference in the benchmark results.
 - The files `data.py`, `layers.py`, `models.py`, `task_execution.py`, `train.py` and `utils.py` implement parts of data loading, training, and parallel execution.
 
-## Updates to the second version of the benchmark
-
-- Added the BAIT selection method with variants BAIT-F and BAIT-FB.
-- For the normalization of input data, mean and standard deviations for the features are now computed on training and pool set instead of only on the initial training set.
-- More precise runtime measurement through CUDA synchronize (only applied in one of the 20 splits where only one process is run per GPU).
-- Now, 64-bit floating point computations are used for computations involving posterior transformations. This can sometimes cause RAM overflows when using parallel execution, though. 
-- We use $\sigma^2 = 10^{-6}$ instead of $\sigma^2 = 10^{-4}$ now, which still works well due to the change to 64-bit floats.
-- The computation of the last-layer kernel does not require the full backward pass now since the earlier layers set `requires_grad=False` for the computation.
-- Fixed a discrepancy between the implementation of selection methods and the corresponding paper pseudocode: Previously, some selection methods could re-select already selected samples in case of numerical issues, which triggered a code filling up the batch with random samples. Now, selecting already selected samples is explicitly prevented.
-- Changed the interface of `run_experiments.py` to be based on lists instead of callbacks.
-
-## Contributors
+## Original Contributors
 
 - [David Holzmüller](https://www.isa.uni-stuttgart.de/en/institute/team/Holzmueller/) (main developer)
 - [Viktor Zaverkin](https://www.itheoc.uni-stuttgart.de/institute/team/Zaverkin/) (contributed to the evaluation code)
